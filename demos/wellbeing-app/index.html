@@ -1,0 +1,1811 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wellbeing companion — interactive concept</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    --ink: #241b15;
+    --muted: #8c8175;
+    --muted-soft: #b3aa9d;
+    --app-bg: #f7f1e9;
+    --surface: #ffffff;
+    --surface-sunken: #efe7db;
+    --line: #e7ddcf;
+    --accent: #bd5c45;
+    --accent-soft: #f1d9d0;
+    --accent-dark: #211812;
+    --sage-bg: #d9e6cf;
+    --sage-ink: #5e7a4e;
+    --slate-bg: #dadfec;
+    --slate-ink: #616c8c;
+    --beige-bg: #ece3d4;
+    --shadow: 0 1px 2px rgb(30 20 10 / 6%), 0 6px 16px rgb(30 20 10 / 8%);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #efe9df;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+  }
+
+  .stage {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.9rem;
+    padding: 1.5rem 1rem 2rem;
+  }
+
+  .hint {
+    margin: 0;
+    max-width: 22rem;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #8a8171;
+    line-height: 1.4;
+  }
+
+  .hint strong { color: #5c5346; }
+
+  /* ---- Phone frame ------------------------------------------------- */
+
+  .phone {
+    position: relative;
+    width: 375px;
+    max-width: 92vw;
+    height: 760px;
+    max-height: 86vh;
+    background: #1c1712;
+    border-radius: 2.6rem;
+    padding: 0.55rem;
+    box-shadow: 0 20px 44px rgb(20 14 8 / 28%), 0 2px 8px rgb(20 14 8 / 18%);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .phone__inner {
+    position: relative;
+    flex: 1;
+    background: var(--app-bg);
+    border-radius: 2.1rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .phone__statusbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.3rem 0.2rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .phone__dots {
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .phone__screens {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.16s ease;
+  }
+
+  .screen.is-active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .screen__scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.4rem 1.1rem 1.5rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .screen__scroll::-webkit-scrollbar { width: 0; height: 0; }
+
+  /* ---- Shared bits --------------------------------------------------- */
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.3rem 0 0.9rem;
+  }
+
+  .topbar h1 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+
+  .icon-btn:active { transform: translateY(1px); }
+
+  .icon-btn svg { width: 1.05rem; height: 1.05rem; }
+
+  .card {
+    background: var(--surface);
+    border-radius: 1.1rem;
+    box-shadow: var(--shadow);
+  }
+
+  .eyebrow {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  button { font-family: inherit; }
+
+  /* ---- Log / weekly plan ---------------------------------------------- */
+
+  .day-strip {
+    display: flex;
+    justify-content: space-between;
+    margin: 0.6rem 0 1.1rem;
+  }
+
+  .day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  .day__num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 999px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .day.is-today .day__num {
+    background: var(--accent-dark);
+    color: #fff;
+  }
+
+  .day__dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: transparent;
+  }
+
+  .day__dot.run { background: var(--sage-ink); }
+  .day__dot.strength { background: var(--slate-ink); }
+  .day__dot.rest { background: var(--muted-soft); }
+
+  .section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0.2rem 0 0.7rem;
+  }
+
+  .session-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .session-card {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.85rem 0.95rem;
+    text-align: left;
+    border: 0;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .session-card:active { transform: scale(0.99); }
+
+  .session-icon {
+    flex: 0 0 auto;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .session-icon svg { width: 1.15rem; height: 1.15rem; }
+
+  .session-icon.run { background: var(--sage-bg); color: var(--sage-ink); }
+  .session-icon.strength { background: var(--slate-bg); color: var(--slate-ink); }
+  .session-icon.rest { background: var(--beige-bg); color: var(--muted); }
+
+  .session-body { flex: 1; min-width: 0; }
+
+  .session-body .eyebrow { margin-bottom: 0.1rem; }
+
+  .session-body strong {
+    display: block;
+    font-size: 0.98rem;
+    font-weight: 800;
+  }
+
+  .session-body span {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 0.05rem;
+  }
+
+  .chev { flex: 0 0 auto; color: var(--muted-soft); }
+
+  .fab {
+    position: absolute;
+    right: 1.2rem;
+    bottom: 1.2rem;
+    width: 3.3rem;
+    height: 3.3rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    border: 0;
+    box-shadow: 0 10px 20px rgb(189 92 69 / 40%);
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .fab:active { transform: scale(0.95); }
+
+  /* ---- Detail screens --------------------------------------------------- */
+
+  .detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.3rem 0 0.6rem;
+  }
+
+  .detail-header h1 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+  }
+
+  .badge-row { margin-bottom: 0.9rem; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .badge.run { background: var(--sage-bg); color: var(--sage-ink); }
+  .badge.strength { background: var(--slate-bg); color: var(--slate-ink); }
+
+  .route-card {
+    position: relative;
+    height: 9.2rem;
+    border-radius: 1.1rem;
+    background: linear-gradient(160deg, #dfe9d5, #eef2e6);
+    margin-bottom: 0.9rem;
+    overflow: hidden;
+  }
+
+  .route-pill {
+    position: absolute;
+    top: 0.7rem;
+    left: 0.7rem;
+    background: rgb(255 255 255 / 0.85);
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+
+  .route-card svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .stat-tile {
+    padding: 0.8rem 0.9rem;
+  }
+
+  .stat-tile .eyebrow { display: block; margin-bottom: 0.3rem; }
+
+  .stat-tile strong {
+    display: block;
+    font-size: 1.3rem;
+    font-weight: 800;
+  }
+
+  .stat-tile small {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-left: 0.15rem;
+  }
+
+  .panel {
+    padding: 0.9rem 0.95rem 1rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 0.7rem;
+  }
+
+  .panel-head span:last-child {
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  .bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.4rem;
+    height: 4.4rem;
+  }
+
+  .bar-chart i {
+    flex: 1;
+    border-radius: 0.35rem 0.35rem 0.15rem 0.15rem;
+    background: var(--accent-soft);
+    display: block;
+  }
+
+  .bar-chart i.is-peak { background: var(--accent); }
+
+  .hr-zone {
+    display: flex;
+    height: 0.55rem;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .hr-zone span { flex: 1; }
+  .hr-zone span:nth-child(1) { background: #d8d2c4; }
+  .hr-zone span:nth-child(2) { background: #b7d19f; }
+  .hr-zone span:nth-child(3) { background: #6f9a5b; }
+  .hr-zone span:nth-child(4) { background: #d97b58; }
+  .hr-zone span:nth-child(5) { background: #a6432b; }
+
+  .hr-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6rem;
+    color: var(--muted);
+    margin-top: 0.4rem;
+  }
+
+  .split-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 0;
+    border-top: 1px solid var(--line);
+    font-size: 0.8rem;
+  }
+
+  .split-row:first-of-type { border-top: 0; }
+
+  .split-row .split-label { flex: 0 0 2.6rem; font-weight: 700; color: var(--muted); font-size: 0.72rem; }
+
+  .split-bar {
+    flex: 1;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: var(--surface-sunken);
+    overflow: hidden;
+  }
+
+  .split-bar > i { display: block; height: 100%; background: var(--sage-ink); border-radius: 999px; }
+
+  .split-row .split-time { flex: 0 0 3rem; text-align: right; font-weight: 700; }
+
+  .exercise-card {
+    padding: 0.85rem 0.95rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .exercise-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+  }
+
+  .exercise-card__head strong { font-size: 0.92rem; font-weight: 800; }
+
+  .pill-soft {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    background: var(--slate-bg);
+    color: var(--slate-ink);
+  }
+
+  .set-row {
+    display: grid;
+    grid-auto-flow: column;
+    gap: 0.45rem;
+  }
+
+  .set-chip {
+    background: var(--surface-sunken);
+    border-radius: 0.6rem;
+    padding: 0.4rem 0.5rem;
+    text-align: center;
+  }
+
+  .set-chip .set-label {
+    display: block;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.15rem;
+  }
+
+  .set-chip .set-val { font-size: 0.78rem; font-weight: 700; }
+
+  .diary-cta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.85rem 0.95rem;
+    border: 1px dashed var(--muted-soft);
+    border-radius: 1.1rem;
+    background: transparent;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-bottom: 1.4rem;
+  }
+
+  .diary-cta:active { transform: scale(0.99); }
+
+  .diary-cta svg { width: 1.15rem; height: 1.15rem; flex: 0 0 auto; }
+
+  /* ---- Calendar --------------------------------------------------------- */
+
+  .month-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0.2rem 0 0.8rem;
+  }
+
+  .month-row h2 { margin: 0; font-size: 1rem; font-weight: 800; }
+
+  .month-nav { display: flex; gap: 0.4rem; }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    row-gap: 0.65rem;
+    margin-bottom: 1.1rem;
+  }
+
+  .cal-grid .cal-dow {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--muted-soft);
+    text-align: center;
+  }
+
+  .cal-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    border: 0;
+    background: none;
+    padding: 0.2rem 0;
+    cursor: pointer;
+    color: var(--ink);
+    font-size: 0.82rem;
+  }
+
+  .cal-cell .cal-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+
+  .cal-cell.is-muted { color: var(--muted-soft); }
+  .cal-cell.is-today .cal-num { border: 2px solid var(--accent); font-weight: 800; }
+
+  .cal-dot { width: 4px; height: 4px; border-radius: 999px; background: transparent; }
+  .cal-dot.run { background: var(--sage-ink); }
+  .cal-dot.strength { background: var(--slate-ink); }
+
+  .streak-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+    border-radius: 1.1rem;
+    background: var(--accent-soft);
+    margin-bottom: 1rem;
+  }
+
+  .streak-card .flame { font-size: 1.4rem; }
+  .streak-card strong { display: block; font-size: 0.95rem; font-weight: 800; }
+  .streak-card span { display: block; font-size: 0.76rem; color: var(--accent); font-weight: 700; }
+
+  .stat-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    text-align: center;
+    gap: 0.4rem;
+  }
+
+  .stat-strip strong { display: block; font-size: 1.15rem; font-weight: 800; }
+  .stat-strip span { display: block; font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem; }
+
+  /* ---- Coach chat --------------------------------------------------------- */
+
+  .coach-head {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.3rem 0 0.9rem;
+  }
+
+  .coach-avatar {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+
+  .coach-head strong { display: block; font-size: 1rem; font-weight: 800; }
+  .coach-head span { display: block; font-size: 0.74rem; color: var(--sage-ink); font-weight: 700; }
+
+  .chat-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 1.1rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .bubble {
+    max-width: 84%;
+    padding: 0.7rem 0.9rem;
+    border-radius: 1rem;
+    font-size: 0.84rem;
+    line-height: 1.4;
+  }
+
+  .bubble.assistant {
+    align-self: flex-start;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    border-bottom-left-radius: 0.3rem;
+  }
+
+  .bubble.assistant .tag {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.3rem;
+  }
+
+  .bubble.user {
+    align-self: flex-end;
+    background: var(--accent-dark);
+    color: #fdf6f0;
+    border-bottom-right-radius: 0.3rem;
+    font-weight: 600;
+  }
+
+  .chat-input-row {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.7rem 1.1rem calc(0.9rem + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: var(--app-bg);
+  }
+
+  .chat-input-row input {
+    flex: 1;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 999px;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: var(--ink);
+  }
+
+  .chat-input-row input:focus { outline: 2px solid var(--accent-soft); }
+
+  .send-btn {
+    flex: 0 0 auto;
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    border: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .send-btn svg { width: 1rem; height: 1rem; }
+  .send-btn:active { transform: scale(0.94); }
+
+  /* ---- Discover ------------------------------------------------------------ */
+
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.7rem 0.95rem;
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--muted);
+    font-size: 0.82rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .search-bar svg { width: 1rem; height: 1rem; flex: 0 0 auto; }
+
+  .filter-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .filter-pill {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .filter-pill.is-active {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    color: #fff;
+  }
+
+  .activity-card {
+    border-radius: 1.1rem;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    margin-bottom: 0.85rem;
+  }
+
+  .activity-card[hidden] { display: none; }
+
+  .activity-banner {
+    height: 4.2rem;
+  }
+
+  .activity-banner.b1 { background: linear-gradient(120deg, #e7cdb9, #f1e1cf); }
+  .activity-banner.b2 { background: linear-gradient(120deg, #dbe4d0, #eef2e6); }
+  .activity-banner.b3 { background: linear-gradient(120deg, #e3c9c4, #d9dcec); }
+
+  .activity-body { padding: 0.85rem 0.95rem 0.9rem; }
+
+  .activity-body strong { display: block; font-size: 0.92rem; font-weight: 800; margin-bottom: 0.15rem; }
+
+  .activity-body .meta { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.6rem; }
+
+  .activity-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .activity-foot .count { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+
+  .join-btn {
+    border: 0;
+    padding: 0.45rem 0.95rem;
+    border-radius: 999px;
+    background: var(--accent-dark);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+
+  .join-btn.is-joined {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--sage-ink);
+  }
+
+  /* ---- Tab bar --------------------------------------------------------- */
+
+  .tabbar {
+    flex: 0 0 auto;
+    display: flex;
+    border-top: 1px solid var(--line);
+    background: var(--app-bg);
+    padding: 0.55rem 0.6rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .tabbar[hidden] { display: none; }
+
+  .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    background: none;
+    border: 0;
+    color: var(--muted-soft);
+    font-size: 0.66rem;
+    font-weight: 700;
+    padding: 0.2rem 0;
+    cursor: pointer;
+  }
+
+  .tab svg { width: 1.15rem; height: 1.15rem; }
+
+  .tab.is-active { color: var(--ink); }
+  .tab.is-active svg { fill: var(--ink); }
+
+  /* ---- Check-in modal --------------------------------------------------- */
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    background: var(--app-bg);
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.22s ease;
+  }
+
+  .overlay.is-open { transform: translateY(0); }
+
+  .overlay__scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.9rem 1.2rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .overlay-head {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 0.6rem;
+  }
+
+  .checkin-title {
+    text-align: center;
+    margin: 0.4rem 0 1.3rem;
+  }
+
+  .checkin-title h2 { margin: 0 0 0.3rem; font-size: 1.15rem; font-weight: 800; }
+  .checkin-title p { margin: 0; font-size: 0.82rem; color: var(--muted); }
+
+  .segmented {
+    display: flex;
+    background: var(--surface-sunken);
+    border-radius: 999px;
+    padding: 0.25rem;
+    margin-bottom: 1.6rem;
+  }
+
+  .segmented button {
+    flex: 1;
+    border: 0;
+    background: none;
+    padding: 0.5rem 0;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .segmented button.is-active {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+  }
+
+  .record-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.9rem;
+    margin-bottom: 1.6rem;
+  }
+
+  .mic-btn {
+    position: relative;
+    width: 5.6rem;
+    height: 5.6rem;
+    border-radius: 999px;
+    border: 0;
+    background: var(--accent-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .mic-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    opacity: 0;
+  }
+
+  .mic-btn.is-recording::after {
+    opacity: 1;
+    animation: pulse 1.4s ease-out infinite;
+  }
+
+  .mic-btn__core {
+    position: relative;
+    z-index: 1;
+    width: 3.6rem;
+    height: 3.6rem;
+    border-radius: 999px;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+  }
+
+  .mic-btn__core svg { width: 1.5rem; height: 1.5rem; }
+
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 0.55; }
+    100% { transform: scale(1.35); opacity: 0; }
+  }
+
+  .waveform {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 1.6rem;
+  }
+
+  .waveform i {
+    width: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+    opacity: 0.85;
+  }
+
+  .rec-timer { font-size: 0.85rem; font-weight: 700; color: var(--muted); }
+
+  .write-area {
+    display: none;
+    margin-bottom: 1.6rem;
+  }
+
+  .write-area.is-active { display: block; }
+
+  .write-area textarea {
+    width: 100%;
+    min-height: 6.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 0.8rem 0.9rem;
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: var(--ink);
+    resize: none;
+  }
+
+  .write-area textarea:focus { outline: 2px solid var(--accent-soft); }
+
+  .mood-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.65rem;
+  }
+
+  .mood-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .mood-chip {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 0.5rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .mood-chip.is-active {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    color: #fff;
+  }
+
+  .past-entry {
+    padding: 0.85rem 0.95rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.5;
+    font-style: italic;
+    margin-bottom: 1.4rem;
+  }
+
+  .past-entry b { display: block; font-style: normal; color: var(--ink); font-size: 0.7rem; margin-top: 0.4rem; }
+
+  .save-btn {
+    margin-top: auto;
+    width: 100%;
+    border: 0;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.95rem;
+    padding: 0.95rem;
+    border-radius: 1.1rem;
+    cursor: pointer;
+  }
+
+  .save-btn:active { transform: scale(0.99); }
+
+  /* ---- Toast ------------------------------------------------------------- */
+
+  .toast {
+    position: absolute;
+    left: 50%;
+    bottom: 5.6rem;
+    transform: translate(-50%, 0.4rem);
+    background: var(--accent-dark);
+    color: #fff;
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    box-shadow: 0 10px 20px rgb(0 0 0 / 25%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 40;
+    white-space: nowrap;
+  }
+
+  .toast.is-shown {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="phone__inner">
+      <div class="phone__statusbar">
+        <span>9:41</span>
+        <span class="phone__dots">●●●</span>
+      </div>
+
+      <div class="phone__screens">
+
+        <!-- LOG (home / weekly plan) -->
+        <section class="screen is-active" data-screen="log">
+          <div class="screen__scroll">
+            <div class="topbar">
+              <h1>This Week</h1>
+              <button class="icon-btn" aria-label="Open calendar" data-goto-tab="calendar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+              </button>
+            </div>
+
+            <div class="day-strip">
+              <div class="day"><span>Mon</span><span class="day__num">16</span><span class="day__dot"></span></div>
+              <div class="day is-today"><span>Tue</span><span class="day__num">17</span><span class="day__dot run"></span></div>
+              <div class="day"><span>Wed</span><span class="day__num">18</span><span class="day__dot"></span></div>
+              <div class="day"><span>Thu</span><span class="day__num">19</span><span class="day__dot strength"></span></div>
+              <div class="day"><span>Fri</span><span class="day__num">20</span><span class="day__dot"></span></div>
+              <div class="day"><span>Sat</span><span class="day__num">21</span><span class="day__dot run"></span></div>
+              <div class="day"><span>Sun</span><span class="day__num">22</span><span class="day__dot rest"></span></div>
+            </div>
+
+            <p class="section-title">Planned sessions</p>
+            <div class="session-list">
+              <button class="session-card card" data-open-detail="run" data-toast="">
+                <span class="session-icon run">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3l-2 7h4l-6 11 1.5-8H7l2-10z"/></svg>
+                </span>
+                <span class="session-body">
+                  <span class="eyebrow">Tuesday · Today</span>
+                  <strong>Easy Run</strong>
+                  <span>30 min · Zone 2</span>
+                </span>
+                <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </button>
+
+              <button class="session-card card" data-open-detail="strength">
+                <span class="session-icon strength">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h2M18 12h2M6 8v8M18 8v8M8 12h8"/></svg>
+                </span>
+                <span class="session-body">
+                  <span class="eyebrow">Thursday</span>
+                  <strong>Full Body Strength</strong>
+                  <span>45 min · 5 exercises</span>
+                </span>
+                <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </button>
+
+              <button class="session-card card" data-open-detail="run">
+                <span class="session-icon run">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3l-2 7h4l-6 11 1.5-8H7l2-10z"/></svg>
+                </span>
+                <span class="session-body">
+                  <span class="eyebrow">Saturday</span>
+                  <strong>Long Run</strong>
+                  <span>70 min · Easy effort</span>
+                </span>
+                <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </button>
+
+              <button class="session-card card" data-toast="Rest day — nothing to log yet">
+                <span class="session-icon rest">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>
+                </span>
+                <span class="session-body">
+                  <span class="eyebrow">Sunday</span>
+                  <strong>Rest day</strong>
+                  <span>Recovery &amp; mobility</span>
+                </span>
+                <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <button class="fab" aria-label="Add a diary entry" data-open-checkin>+</button>
+        </section>
+
+        <!-- CALENDAR -->
+        <section class="screen" data-screen="calendar">
+          <div class="screen__scroll">
+            <div class="topbar">
+              <h1>Calendar</h1>
+              <button class="icon-btn" aria-label="Streak history">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              </button>
+            </div>
+
+            <div class="month-row">
+              <h2 id="cal-month">September</h2>
+              <div class="month-nav">
+                <button class="icon-btn" data-cal-nav="-1" aria-label="Previous month">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>
+                </button>
+                <button class="icon-btn" data-cal-nav="1" aria-label="Next month">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="cal-grid">
+              <span class="cal-dow">M</span><span class="cal-dow">T</span><span class="cal-dow">W</span><span class="cal-dow">T</span><span class="cal-dow">F</span><span class="cal-dow">S</span><span class="cal-dow">S</span>
+
+              <button class="cal-cell is-muted"><span class="cal-num">31</span><span class="cal-dot"></span></button>
+              <button class="cal-cell" data-toast="Run logged · 5.2 km"><span class="cal-num">1</span><span class="cal-dot run"></span></button>
+              <button class="cal-cell"><span class="cal-num">2</span><span class="cal-dot"></span></button>
+              <button class="cal-cell" data-toast="Strength logged · Upper body"><span class="cal-num">3</span><span class="cal-dot strength"></span></button>
+              <button class="cal-cell"><span class="cal-num">4</span><span class="cal-dot"></span></button>
+              <button class="cal-cell" data-toast="Run logged · 8.0 km"><span class="cal-num">5</span><span class="cal-dot run"></span></button>
+              <button class="cal-cell"><span class="cal-num">6</span><span class="cal-dot"></span></button>
+
+              <button class="cal-cell" data-toast="Run logged · 4.6 km"><span class="cal-num">7</span><span class="cal-dot run"></span></button>
+              <button class="cal-cell"><span class="cal-num">8</span><span class="cal-dot"></span></button>
+              <button class="cal-cell" data-toast="Strength logged · Lower body"><span class="cal-num">9</span><span class="cal-dot strength"></span></button>
+              <button class="cal-cell" data-toast="Strength logged · Full body"><span class="cal-num">10</span><span class="cal-dot strength"></span></button>
+              <button class="cal-cell"><span class="cal-num">11</span><span class="cal-dot"></span></button>
+              <button class="cal-cell" data-toast="Run logged · 10.1 km"><span class="cal-num">12</span><span class="cal-dot run"></span></button>
+              <button class="cal-cell"><span class="cal-num">13</span><span class="cal-dot"></span></button>
+
+              <button class="cal-cell" data-toast="Run logged · 5.0 km"><span class="cal-num">14</span><span class="cal-dot run"></span></button>
+              <button class="cal-cell"><span class="cal-num">15</span><span class="cal-dot"></span></button>
+              <button class="cal-cell"><span class="cal-num">16</span><span class="cal-dot"></span></button>
+              <button class="cal-cell is-today" data-toast="Today · Easy Run planned"><span class="cal-num">17</span><span class="cal-dot run"></span></button>
+              <button class="cal-cell" data-toast="Strength planned · Full Body"><span class="cal-num">18</span><span class="cal-dot strength"></span></button>
+              <button class="cal-cell"><span class="cal-num">19</span><span class="cal-dot"></span></button>
+              <button class="cal-cell"><span class="cal-num">20</span><span class="cal-dot"></span></button>
+            </div>
+
+            <div class="streak-card">
+              <span class="flame">🔥</span>
+              <span>
+                <strong>12-day streak</strong>
+                <span>Best this year: 19 days</span>
+              </span>
+            </div>
+
+            <div class="stat-strip">
+              <span><strong>14</strong><span>Sessions</span></span>
+              <span><strong>62 km</strong><span>Distance</span></span>
+              <span><strong>31,400 kg</strong><span>Volume lifted</span></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- COACH -->
+        <section class="screen" data-screen="coach">
+          <div class="coach-head" style="padding-inline: 1.1rem;">
+            <span class="coach-avatar">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.6L19 9l-5.2 1.4L12 16l-1.8-5.6L5 9l5.2-1.4z"/></svg>
+            </span>
+            <span>
+              <strong>Coach</strong>
+              <span>● Based on your last 7 sessions</span>
+            </span>
+          </div>
+
+          <div class="chat-scroll" id="chat-scroll">
+            <div class="bubble assistant">
+              <span class="tag">Insight</span>
+              Your pace on today's run stayed steady even though you logged "tired" beforehand — that's a good sign your aerobic base is building.
+            </div>
+            <div class="bubble user">What should I focus on this week?</div>
+            <div class="bubble assistant">
+              Two easy runs, one long run, and keep Thursday's strength session — your squat volume is trending up nicely. Consider an extra rest day if Friday's "drained" pattern shows up again.
+            </div>
+            <div class="bubble user">Can you remind me before Thursday's session?</div>
+            <div class="bubble assistant">
+              <span class="tag">Done</span>
+              Reminder set for Thursday, 6:00pm — Lower Body Strength.
+            </div>
+          </div>
+
+          <form class="chat-input-row" id="chat-form">
+            <input type="text" id="chat-input" placeholder="Ask your coach anything…" autocomplete="off">
+            <button type="submit" class="send-btn" aria-label="Send">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 12h16M14 6l6 6-6 6"/></svg>
+            </button>
+          </form>
+        </section>
+
+        <!-- DISCOVER -->
+        <section class="screen" data-screen="discover">
+          <div class="screen__scroll">
+            <div class="topbar">
+              <h1>Discover</h1>
+              <button class="icon-btn" aria-label="Saved">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 8.6c0 4.4-8.8 10-8.8 10s-8.8-5.6-8.8-10a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z"/></svg>
+              </button>
+            </div>
+
+            <div class="search-bar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              Search groups, classes, events…
+            </div>
+
+            <div class="filter-row">
+              <button class="filter-pill is-active" data-filter="running">Running groups</button>
+              <button class="filter-pill" data-filter="challenges">Challenges</button>
+              <button class="filter-pill" data-filter="classes">Classes</button>
+            </div>
+
+            <div class="activity-card" data-tag="running">
+              <div class="activity-banner b1"></div>
+              <div class="activity-body">
+                <strong>Sunday Social 5K</strong>
+                <div class="meta">Centennial Park · Sun, 7:30am</div>
+                <div class="activity-foot">
+                  <span class="count">42 joined</span>
+                  <button class="join-btn" data-join>Join</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="activity-card" data-tag="challenges" hidden>
+              <div class="activity-banner b2"></div>
+              <div class="activity-body">
+                <strong>30-Day Consistency Challenge</strong>
+                <div class="meta">Ends in 6 days · Any activity counts</div>
+                <div class="activity-foot">
+                  <span class="count">128 joined</span>
+                  <button class="join-btn" data-join>Join</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="activity-card" data-tag="classes" hidden>
+              <div class="activity-banner b3"></div>
+              <div class="activity-body">
+                <strong>Beginner Strength Circuit</strong>
+                <div class="meta">Thu, 6:30pm · Studio class</div>
+                <div class="activity-foot">
+                  <span class="count">19 joined</span>
+                  <button class="join-btn" data-join>Join</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RUN DETAIL -->
+        <section class="screen screen--detail" data-screen="run-detail">
+          <div class="screen__scroll">
+            <div class="detail-header">
+              <button class="icon-btn" data-back>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>
+              </button>
+              <h1>Morning Run</h1>
+              <button class="icon-btn" aria-label="More">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>
+              </button>
+            </div>
+
+            <div class="badge-row"><span class="badge run">Run · Outdoor</span></div>
+
+            <div class="route-card">
+              <span class="route-pill">8.42 km route</span>
+              <svg viewBox="0 0 300 130" preserveAspectRatio="none">
+                <path d="M20 100 C 60 60, 100 110, 140 70 S 220 40, 280 25" fill="none" stroke="#7d9a68" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="20" cy="100" r="5" fill="#5e7a4e"/>
+                <circle cx="280" cy="25" r="5" fill="#bd5c45"/>
+              </svg>
+            </div>
+
+            <div class="stat-grid">
+              <div class="stat-tile card"><span class="eyebrow">Distance</span><strong>8.42<small>km</small></strong></div>
+              <div class="stat-tile card"><span class="eyebrow">Duration</span><strong>42:18</strong></div>
+              <div class="stat-tile card"><span class="eyebrow">Avg pace</span><strong>5:01<small>/km</small></strong></div>
+              <div class="stat-tile card"><span class="eyebrow">Elevation</span><strong>68<small>m</small></strong></div>
+            </div>
+
+            <div class="panel card">
+              <div class="panel-head"><span>Pace per km</span><span>avg 5:01</span></div>
+              <div class="bar-chart">
+                <i style="height: 62%"></i>
+                <i style="height: 55%"></i>
+                <i class="is-peak" style="height: 100%"></i>
+                <i style="height: 58%"></i>
+                <i style="height: 40%"></i>
+                <i style="height: 48%"></i>
+                <i style="height: 72%"></i>
+                <i style="height: 65%"></i>
+                <i style="height: 35%"></i>
+              </div>
+            </div>
+
+            <div class="panel card">
+              <div class="panel-head"><span>Heart rate zones</span><span>avg 152 bpm</span></div>
+              <div class="hr-zone"><span></span><span></span><span></span><span></span><span></span></div>
+              <div class="hr-labels"><span>Easy</span><span>Fat burn</span><span>Aerobic</span><span>Threshold</span><span>Peak</span></div>
+            </div>
+
+            <p class="section-title">Splits</p>
+            <div class="card" style="padding: 0.2rem 0.95rem; margin-bottom: 1.4rem;">
+              <div class="split-row"><span class="split-label">1 km</span><span class="split-bar"><i style="width: 92%"></i></span><span class="split-time">4:52</span></div>
+              <div class="split-row"><span class="split-label">2 km</span><span class="split-bar"><i style="width: 86%"></i></span><span class="split-time">5:04</span></div>
+              <div class="split-row"><span class="split-label">3 km</span><span class="split-bar"><i style="width: 100%"></i></span><span class="split-time">4:41</span></div>
+              <div class="split-row"><span class="split-label">4 km</span><span class="split-bar"><i style="width: 80%"></i></span><span class="split-time">5:12</span></div>
+              <div class="split-row"><span class="split-label">5 km</span><span class="split-bar"><i style="width: 76%"></i></span><span class="split-time">5:18</span></div>
+            </div>
+
+            <button class="diary-cta" data-open-checkin>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19v3M12 3v13M12 16a4 4 0 0 0 4-4V7a4 4 0 0 0-8 0v5a4 4 0 0 0 4 4zM6 10v2a6 6 0 0 0 12 0v-2"/></svg>
+              How did that feel? Add a diary entry
+            </button>
+          </div>
+        </section>
+
+        <!-- STRENGTH DETAIL -->
+        <section class="screen screen--detail" data-screen="strength-detail">
+          <div class="screen__scroll">
+            <div class="detail-header">
+              <button class="icon-btn" data-back>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>
+              </button>
+              <h1>Lower Body</h1>
+              <button class="icon-btn" aria-label="More">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>
+              </button>
+            </div>
+
+            <div class="badge-row"><span class="badge strength">Strength</span></div>
+
+            <div class="stat-grid">
+              <div class="stat-tile card"><span class="eyebrow">Duration</span><strong>51<small>min</small></strong></div>
+              <div class="stat-tile card"><span class="eyebrow">Volume</span><strong>4,820<small>kg</small></strong></div>
+              <div class="stat-tile card"><span class="eyebrow">Sets</span><strong>18</strong></div>
+              <div class="stat-tile card"><span class="eyebrow">Exercises</span><strong>5</strong></div>
+            </div>
+
+            <p class="section-title">Exercises</p>
+
+            <div class="exercise-card card">
+              <div class="exercise-card__head"><strong>Back Squat</strong><span class="pill-soft">+2.5 kg</span></div>
+              <div class="set-row">
+                <div class="set-chip"><span class="set-label">Set 1</span><span class="set-val">8 × 60</span></div>
+                <div class="set-chip"><span class="set-label">Set 2</span><span class="set-val">8 × 62.5</span></div>
+                <div class="set-chip"><span class="set-label">Set 3</span><span class="set-val">6 × 65</span></div>
+                <div class="set-chip"><span class="set-label">Set 4</span><span class="set-val">6 × 65</span></div>
+              </div>
+            </div>
+
+            <div class="exercise-card card">
+              <div class="exercise-card__head"><strong>Romanian Deadlift</strong><span class="pill-soft">+2.5 kg</span></div>
+              <div class="set-row">
+                <div class="set-chip"><span class="set-label">Set 1</span><span class="set-val">10 × 45</span></div>
+                <div class="set-chip"><span class="set-label">Set 2</span><span class="set-val">10 × 50</span></div>
+                <div class="set-chip"><span class="set-label">Set 3</span><span class="set-val">8 × 50</span></div>
+              </div>
+            </div>
+
+            <div class="exercise-card card">
+              <div class="exercise-card__head"><strong>Walking Lunge</strong><span class="pill-soft">same</span></div>
+              <div class="set-row">
+                <div class="set-chip"><span class="set-label">Set 1</span><span class="set-val">12 × 16</span></div>
+                <div class="set-chip"><span class="set-label">Set 2</span><span class="set-val">12 × 16</span></div>
+                <div class="set-chip"><span class="set-label">Set 3</span><span class="set-val">10 × 16</span></div>
+              </div>
+            </div>
+
+            <div class="panel card">
+              <div class="panel-head"><span>Weekly volume</span><span>this week 14,240 kg</span></div>
+              <div class="bar-chart">
+                <i style="height: 45%; background: var(--slate-bg);"></i>
+                <i style="height: 38%; background: var(--slate-bg);"></i>
+                <i style="height: 100%; background: var(--slate-ink);"></i>
+                <i style="height: 30%; background: var(--slate-bg);"></i>
+                <i style="height: 55%; background: var(--slate-bg);"></i>
+                <i style="height: 22%; background: var(--slate-bg);"></i>
+                <i style="height: 12%; background: var(--slate-bg);"></i>
+              </div>
+            </div>
+
+            <button class="diary-cta" data-open-checkin style="margin-top: 0.9rem;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19v3M12 3v13M12 16a4 4 0 0 0 4-4V7a4 4 0 0 0-8 0v5a4 4 0 0 0 4 4zM6 10v2a6 6 0 0 0 12 0v-2"/></svg>
+              How did that feel? Add a diary entry
+            </button>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- CHECK-IN MODAL -->
+      <div class="overlay" id="checkin-overlay">
+        <div class="overlay__scroll">
+          <div class="overlay-head">
+            <button class="icon-btn" data-close-checkin aria-label="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </div>
+
+          <div class="checkin-title">
+            <h2>How did that feel?</h2>
+            <p>Morning Run · 8.42 km · 42:18</p>
+          </div>
+
+          <div class="segmented">
+            <button type="button" class="is-active" data-mode="voice">Voice note</button>
+            <button type="button" data-mode="write">Write instead</button>
+          </div>
+
+          <div class="record-zone" id="record-zone">
+            <button class="mic-btn" id="mic-btn" aria-label="Start recording">
+              <span class="mic-btn__core">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M19 11a7 7 0 0 1-14 0" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 18v3" stroke="currentColor" stroke-width="2"/></svg>
+              </span>
+            </button>
+            <div class="waveform" id="waveform"></div>
+            <span class="rec-timer" id="rec-timer">Tap to record</span>
+          </div>
+
+          <div class="write-area" id="write-area">
+            <textarea placeholder="How did that one feel?"></textarea>
+          </div>
+
+          <p class="mood-title">Quick mood</p>
+          <div class="mood-row">
+            <button class="mood-chip is-active" data-mood>Energised</button>
+            <button class="mood-chip" data-mood>Good</button>
+            <button class="mood-chip" data-mood>Tired</button>
+            <button class="mood-chip" data-mood>Sore</button>
+            <button class="mood-chip" data-mood>Drained</button>
+          </div>
+
+          <p class="section-title">Past entries</p>
+          <div class="past-entry card">
+            "Legs felt heavy for the first 2k but settled into a good rhythm after that. Cooler morning helped."
+            <b>— Wed, voice note, 0:22</b>
+          </div>
+
+          <button class="save-btn" id="save-entry">Save entry</button>
+        </div>
+      </div>
+
+      <div class="toast" id="toast"></div>
+
+      <!-- TAB BAR -->
+      <nav class="tabbar" id="tabbar">
+        <button class="tab is-active" data-tab="discover">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 8.6c0 4.4-8.8 10-8.8 10s-8.8-5.6-8.8-10a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z"/></svg>
+          Discover
+        </button>
+        <button class="tab" data-tab="calendar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+          Calendar
+        </button>
+        <button class="tab" data-tab="log">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          Log
+        </button>
+        <button class="tab" data-tab="coach">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.8 5.6L19 9l-5.2 1.4L12 16l-1.8-5.6L5 9l5.2-1.4z"/></svg>
+          Coach
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <p class="hint"><strong>Interactive concept</strong> — tap around the tab bar, open a session, try the voice check-in and the coach chat. Not a live app: nothing here is saved.</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var screens = Array.prototype.slice.call(document.querySelectorAll(".screen"));
+  var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+  var tabbar = document.getElementById("tabbar");
+  var toastEl = document.getElementById("toast");
+  var toastTimer = null;
+
+  var state = { tab: "log", detail: null };
+
+  function render() {
+    var shown = state.detail ? state.detail + "-detail" : state.tab;
+    screens.forEach(function (s) {
+      s.classList.toggle("is-active", s.getAttribute("data-screen") === shown);
+    });
+    tabs.forEach(function (t) {
+      t.classList.toggle("is-active", !state.detail && t.getAttribute("data-tab") === state.tab);
+    });
+    tabbar.hidden = !!state.detail;
+  }
+
+  function goTab(name) {
+    state.tab = name;
+    state.detail = null;
+    render();
+  }
+
+  function openDetail(name) {
+    state.detail = name;
+    render();
+  }
+
+  function goBack() {
+    state.detail = null;
+    render();
+  }
+
+  tabs.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      goTab(btn.getAttribute("data-tab"));
+    });
+  });
+
+  Array.prototype.slice.call(document.querySelectorAll("[data-goto-tab]")).forEach(function (btn) {
+    btn.addEventListener("click", function () { goTab(btn.getAttribute("data-goto-tab")); });
+  });
+
+  Array.prototype.slice.call(document.querySelectorAll("[data-open-detail]")).forEach(function (btn) {
+    btn.addEventListener("click", function () { openDetail(btn.getAttribute("data-open-detail")); });
+  });
+
+  Array.prototype.slice.call(document.querySelectorAll("[data-back]")).forEach(function (btn) {
+    btn.addEventListener("click", goBack);
+  });
+
+  /* ---- Toast ---- */
+  function showToast(text) {
+    if (!text) return;
+    toastEl.textContent = text;
+    toastEl.classList.add("is-shown");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove("is-shown"); }, 1700);
+  }
+
+  Array.prototype.slice.call(document.querySelectorAll("[data-toast]")).forEach(function (el) {
+    el.addEventListener("click", function (e) {
+      var msg = el.getAttribute("data-toast");
+      if (msg) {
+        e.stopPropagation();
+        showToast(msg);
+      }
+    });
+  });
+
+  /* ---- Calendar month cycling (cosmetic) ---- */
+  var months = ["August", "September", "October"];
+  var monthIndex = 1;
+  var monthLabel = document.getElementById("cal-month");
+  Array.prototype.slice.call(document.querySelectorAll("[data-cal-nav]")).forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      monthIndex = Math.min(months.length - 1, Math.max(0, monthIndex + parseInt(btn.getAttribute("data-cal-nav"), 10)));
+      monthLabel.textContent = months[monthIndex];
+    });
+  });
+
+  /* ---- Discover filters ---- */
+  var filterPills = Array.prototype.slice.call(document.querySelectorAll(".filter-pill"));
+  var activityCards = Array.prototype.slice.call(document.querySelectorAll(".activity-card"));
+  filterPills.forEach(function (pill) {
+    pill.addEventListener("click", function () {
+      filterPills.forEach(function (p) { p.classList.remove("is-active"); });
+      pill.classList.add("is-active");
+      var tag = pill.getAttribute("data-filter");
+      activityCards.forEach(function (card) {
+        card.hidden = card.getAttribute("data-tag") !== tag;
+      });
+    });
+  });
+
+  Array.prototype.slice.call(document.querySelectorAll("[data-join]")).forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var joined = btn.classList.toggle("is-joined");
+      btn.textContent = joined ? "Joined ✓" : "Join";
+    });
+  });
+
+  /* ---- Coach chat ---- */
+  var chatScroll = document.getElementById("chat-scroll");
+  var chatForm = document.getElementById("chat-form");
+  var chatInput = document.getElementById("chat-input");
+  var replies = [
+    "Noted — I'll fold that into your plan for next week.",
+    "Good call. I'll keep an eye on that and flag it if the pattern repeats.",
+    "Got it. Want me to adjust Thursday's session to match?",
+    "That tracks with your last few entries — I'll factor it into your next insight."
+  ];
+  var replyIndex = 0;
+
+  function addBubble(text, kind, tag) {
+    var el = document.createElement("div");
+    el.className = "bubble " + kind;
+    if (tag) {
+      var t = document.createElement("span");
+      t.className = "tag";
+      t.textContent = tag;
+      el.appendChild(t);
+      el.appendChild(document.createTextNode(text));
+    } else {
+      el.textContent = text;
+    }
+    chatScroll.appendChild(el);
+    chatScroll.scrollTop = chatScroll.scrollHeight;
+  }
+
+  chatForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var value = chatInput.value.trim();
+    if (!value) return;
+    addBubble(value, "user");
+    chatInput.value = "";
+    setTimeout(function () {
+      addBubble(replies[replyIndex % replies.length], "assistant");
+      replyIndex++;
+    }, 550);
+  });
+
+  /* ---- Check-in modal ---- */
+  var overlay = document.getElementById("checkin-overlay");
+  Array.prototype.slice.call(document.querySelectorAll("[data-open-checkin]")).forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      overlay.classList.add("is-open");
+      resetRecording();
+    });
+  });
+  Array.prototype.slice.call(document.querySelectorAll("[data-close-checkin]")).forEach(function (btn) {
+    btn.addEventListener("click", function () { overlay.classList.remove("is-open"); });
+  });
+
+  document.getElementById("save-entry").addEventListener("click", function () {
+    overlay.classList.remove("is-open");
+    showToast("Entry saved");
+    stopRecording();
+  });
+
+  var segButtons = Array.prototype.slice.call(document.querySelectorAll(".segmented button"));
+  var recordZone = document.getElementById("record-zone");
+  var writeArea = document.getElementById("write-area");
+  segButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      segButtons.forEach(function (b) { b.classList.remove("is-active"); });
+      btn.classList.add("is-active");
+      var mode = btn.getAttribute("data-mode");
+      recordZone.style.display = mode === "voice" ? "flex" : "none";
+      writeArea.classList.toggle("is-active", mode === "write");
+    });
+  });
+
+  var moodChips = Array.prototype.slice.call(document.querySelectorAll(".mood-chip"));
+  moodChips.forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      moodChips.forEach(function (c) { c.classList.remove("is-active"); });
+      chip.classList.add("is-active");
+    });
+  });
+
+  /* ---- Waveform bars ---- */
+  var waveform = document.getElementById("waveform");
+  for (var i = 0; i < 18; i++) {
+    var bar = document.createElement("i");
+    bar.style.height = (6 + Math.random() * 6) + "px";
+    waveform.appendChild(bar);
+  }
+  var waveBars = Array.prototype.slice.call(waveform.children);
+
+  var micBtn = document.getElementById("mic-btn");
+  var recTimer = document.getElementById("rec-timer");
+  var recording = false;
+  var recSeconds = 0;
+  var recInterval = null;
+  var waveInterval = null;
+
+  function formatTime(s) {
+    var m = Math.floor(s / 60);
+    var sec = s % 60;
+    return m + ":" + (sec < 10 ? "0" : "") + sec;
+  }
+
+  function startRecording() {
+    recording = true;
+    recSeconds = 0;
+    micBtn.classList.add("is-recording");
+    micBtn.setAttribute("aria-label", "Stop recording");
+    recTimer.textContent = "0:00";
+    recInterval = setInterval(function () {
+      recSeconds++;
+      recTimer.textContent = formatTime(recSeconds);
+    }, 1000);
+    waveInterval = setInterval(function () {
+      waveBars.forEach(function (b) { b.style.height = (5 + Math.random() * 22) + "px"; });
+    }, 220);
+  }
+
+  function stopRecording() {
+    recording = false;
+    micBtn.classList.remove("is-recording");
+    micBtn.setAttribute("aria-label", "Start recording");
+    clearInterval(recInterval);
+    clearInterval(waveInterval);
+  }
+
+  function resetRecording() {
+    stopRecording();
+    recSeconds = 0;
+    recTimer.textContent = "Tap to record";
+    waveBars.forEach(function (b) { b.style.height = (6 + Math.random() * 6) + "px"; });
+  }
+
+  micBtn.addEventListener("click", function () {
+    if (recording) {
+      stopRecording();
+      recTimer.textContent = formatTime(recSeconds) + " · tap to re-record";
+    } else {
+      startRecording();
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

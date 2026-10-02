@@ -1,0 +1,995 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Betting operations console — interactive demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   BET Operations Console — shared design system
+   One vocabulary for status, filters, selection, actions and price edits.
+   ========================================================================== */
+
+:root {
+  /* Brand + neutrals */
+  --ink: #0d1b2a;
+  --ink-2: #33475b;
+  --muted: #64748b;
+  --faint: #94a3b8;
+  --line: #e2e8f0;
+  --line-2: #eef2f6;
+  --bg: #f3f5f8;
+  --card: #ffffff;
+  --brand: #0f3d63;
+  --brand-600: #155a8a;
+  --brand-50: #e8f1f8;
+  --rail: #0b2239;
+  --rail-2: #12304d;
+  --focus: #2f7fd1;
+
+  /* Status system — the same five colours everywhere */
+  --pre: #1d5fd1;      --pre-bg: #e9f0fd;      /* Pre-match / Open  — accepting bets */
+  --live: #0f8a4a;     --live-bg: #e3f5eb;     /* In-play           — live */
+  --susp: #b45309;     --susp-bg: #fdf1e2;     /* Suspended         — bets paused */
+  --closed: #516174;   --closed-bg: #edf1f5;   /* Closed            — no new bets, awaiting result */
+  --res: #6b3fd4;      --res-bg: #f0ebfd;      /* Resulted          — settled */
+
+  /* Risk + price movement */
+  --risk: #c2261f;     --risk-bg: #fdecea;
+  --warn: #b7791f;     --warn-bg: #fdf6e3;
+  --up: #0f8a4a;       /* price lengthened (drift) */
+  --down: #c2261f;     /* price shortened (firm) */
+  --edit: #f4b400;     --edit-bg: #fff8e1;     /* unsaved change */
+
+  --r-sm: 6px;
+  --r: 8px;
+  --r-lg: 12px;
+  --shadow: 0 1px 2px rgba(13, 27, 42, .06), 0 1px 3px rgba(13, 27, 42, .04);
+  --shadow-lg: 0 12px 32px rgba(13, 27, 42, .16), 0 2px 6px rgba(13, 27, 42, .08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); }
+body {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+.num, .price, td.n, .kpi b { font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+.i { width: 16px; height: 16px; flex: none; display: inline-block; vertical-align: middle; }
+.i-sm { width: 14px; height: 14px; }
+.i-xs { width: 12px; height: 12px; }
+.i-lg { width: 20px; height: 20px; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.row { display: flex; align-items: center; gap: 8px; }
+.grow { flex: 1; }
+.sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
+
+/* --------------------------------------------------------------------------
+   Desktop shell
+   -------------------------------------------------------------------------- */
+.desk { width: 1366px; height: 1024px; overflow: hidden; display: grid; grid-template-rows: 56px 1fr; }
+.topbar {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--card); border-bottom: 1px solid var(--line); padding: 0 20px 0 0;
+}
+.brandmark { width: 76px; height: 56px; display: grid; place-items: center; background: var(--rail); }
+.logo {
+  font-weight: 800; font-size: 15px; letter-spacing: .5px; color: #fff;
+  background: var(--brand-600); border-radius: 6px; padding: 5px 7px 4px; line-height: 1;
+}
+.logo em { font-style: normal; color: #7cc4ff; }
+.product { font-weight: 600; font-size: 14px; color: var(--ink); padding-left: 4px; width: 180px; white-space: nowrap; }
+.product small { display: block; font-weight: 500; font-size: 11px; color: var(--muted); }
+.search {
+  display: flex; align-items: center; gap: 8px; width: 420px; height: 36px; padding: 0 10px 0 12px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: var(--r); color: var(--muted);
+}
+.search span:first-of-type { flex: 1; white-space: nowrap; overflow: hidden; }
+.kbd { font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: 1px 5px; }
+.feedstate { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); font-weight: 500; }
+.iconbtn {
+  position: relative; width: 36px; height: 36px; border-radius: var(--r); display: grid; place-items: center; color: var(--ink-2);
+}
+.iconbtn:hover { background: var(--bg); }
+.iconbtn .badge { position: absolute; top: 3px; right: 2px; }
+.badge {
+  min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--risk); color: #fff;
+  font-size: 10px; font-weight: 700; display: inline-grid; place-items: center; border: 2px solid #fff; line-height: 1;
+}
+.me { display: flex; align-items: center; gap: 10px; padding-left: 12px; border-left: 1px solid var(--line); }
+.avatar {
+  width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #1f6fb2, #0f3d63);
+  color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 12px; flex: none;
+}
+.me b { display: block; font-size: 13px; font-weight: 600; }
+.me span { font-size: 11px; color: var(--muted); }
+
+.body { display: grid; grid-template-columns: 76px 196px 1fr; min-height: 0; }
+.rail { background: var(--rail); display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 2px; }
+.rail a {
+  width: 64px; padding: 9px 0 7px; border-radius: var(--r); display: flex; flex-direction: column; align-items: center; gap: 4px;
+  color: #9fb3c8; text-decoration: none; font-size: 10.5px; font-weight: 500;
+}
+.rail a.on { background: var(--rail-2); color: #fff; box-shadow: inset 3px 0 0 #7cc4ff; }
+.rail .i { width: 20px; height: 20px; }
+.rail .spacer { flex: 1; }
+
+.subnav { background: var(--card); border-right: 1px solid var(--line); padding: 16px 12px; overflow: hidden; }
+.subnav h6 { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 0 8px 8px; }
+.seg-mini { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); border-radius: var(--r); padding: 3px; margin-bottom: 16px; }
+.seg-mini button { height: 28px; border-radius: 6px; font-weight: 600; font-size: 12px; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 6px; }
+.seg-mini button.on { background: #fff; color: var(--ink); box-shadow: var(--shadow); }
+.navlist a {
+  display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: var(--r-sm);
+  color: var(--ink-2); text-decoration: none; font-weight: 500;
+}
+.navlist a .c { margin-left: auto; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.navlist a.on { background: var(--brand-50); color: var(--brand); font-weight: 600; }
+.navlist a.on .c { color: var(--brand-600); }
+.livecount { display: inline-flex; align-items: center; gap: 4px; color: var(--live) !important; font-weight: 600; }
+.livecount::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--live); }
+
+.main { min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+.content { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; min-height: 0; flex: 1; }
+
+/* Page heading */
+.crumbs { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.crumbs b { color: var(--ink-2); font-weight: 500; }
+.crumbs .i { width: 12px; height: 12px; color: var(--faint); }
+.pagehead { display: flex; align-items: flex-end; gap: 16px; }
+.pagehead h1 { font-size: 22px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; }
+.pagehead p { color: var(--muted); margin-top: 3px; }
+.pagehead .actions { margin-left: auto; display: flex; gap: 8px; }
+.updated { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+/* --------------------------------------------------------------------------
+   Buttons — always a label; icon-only buttons are reserved for overflow (⋯)
+   Primary = commit, Secondary = neutral, Warn = suspend, Danger = destructive
+   -------------------------------------------------------------------------- */
+.btn {
+  height: 34px; padding: 0 12px; border-radius: var(--r); display: inline-flex; align-items: center; gap: 6px;
+  font-weight: 600; font-size: 13px; white-space: nowrap; border: 1px solid transparent;
+}
+.btn-sm { height: 28px; padding: 0 10px; font-size: 12px; gap: 5px; border-radius: 6px; }
+.btn-primary { background: var(--brand); color: #fff; }
+.btn-secondary { background: #fff; border-color: #cfd8e3; color: var(--ink); }
+.btn-ghost { color: var(--ink-2); }
+.btn-warn { background: #fff; border-color: #f0c98f; color: var(--susp); }
+.btn-danger { background: #fff; border-color: #f2b8b4; color: var(--risk); }
+.btn-live { background: #fff; border-color: #a7dcbf; color: var(--live); }
+.btn .count { background: rgba(255,255,255,.2); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
+.btn-secondary .count { background: var(--bg); }
+.btn-icon { width: 34px; padding: 0; justify-content: center; }
+.btn-sm.btn-icon { width: 28px; }
+
+/* --------------------------------------------------------------------------
+   Status pill — dot + label, identical on events, markets and selections
+   -------------------------------------------------------------------------- */
+.st {
+  display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px 0 7px; border-radius: 11px;
+  font-size: 11.5px; font-weight: 600; white-space: nowrap; line-height: 1;
+}
+.st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.st.pre { color: var(--pre); background: var(--pre-bg); }
+.st.live { color: var(--live); background: var(--live-bg); }
+.st.live::before { box-shadow: 0 0 0 3px rgba(15, 138, 74, .22); }
+.st.susp { color: var(--susp); background: var(--susp-bg); }
+.st.susp::before { border-radius: 1px; width: 6px; height: 6px; }
+.st.closed { color: var(--closed); background: var(--closed-bg); }
+.st.res { color: var(--res); background: var(--res-bg); }
+.st.won { color: var(--live); background: var(--live-bg); }
+.st.lost { color: var(--closed); background: var(--closed-bg); }
+.st.pend { color: var(--pre); background: var(--pre-bg); }
+.st.void { color: var(--res); background: var(--res-bg); }
+.st.lg { height: 26px; font-size: 12.5px; padding: 0 10px 0 9px; border-radius: 13px; }
+
+/* Neutral descriptor tag — types, tags, promos. Never coloured, so it can't be mistaken for status */
+.tag {
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 5px;
+  border: 1px solid var(--line); background: #fff; color: var(--ink-2); font-size: 11.5px; font-weight: 500; white-space: nowrap;
+}
+.tag .i { width: 12px; height: 12px; color: var(--faint); }
+.tag.solid { background: var(--bg); border-color: transparent; }
+
+/* Risk flag */
+.flag { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; color: var(--risk); }
+.flag.warn { color: var(--warn); }
+.flag .i { width: 13px; height: 13px; }
+
+/* --------------------------------------------------------------------------
+   Filters — segmented status tabs with counts, field controls, removable chips
+   -------------------------------------------------------------------------- */
+.filterbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.segtabs { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: var(--r); padding: 3px; gap: 2px; }
+.segtabs button {
+  height: 28px; padding: 0 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 7px;
+  font-weight: 600; font-size: 12.5px; color: var(--muted); white-space: nowrap;
+}
+.segtabs button .dot { width: 7px; height: 7px; border-radius: 50%; }
+.segtabs button .c { font-size: 11px; font-weight: 600; color: var(--faint); font-variant-numeric: tabular-nums; }
+.segtabs button.on { background: var(--brand); color: #fff; }
+.segtabs button.on .c { color: rgba(255,255,255,.75); }
+.field {
+  height: 34px; display: inline-flex; align-items: center; gap: 8px; padding: 0 10px; background: #fff;
+  border: 1px solid #cfd8e3; border-radius: var(--r); color: var(--ink); font-weight: 500; white-space: nowrap;
+}
+.field small { color: var(--muted); font-weight: 500; font-size: 12px; }
+.field .i-down { color: var(--muted); width: 14px; height: 14px; }
+.field.set { border-color: var(--brand-600); background: var(--brand-50); }
+.field.input { color: var(--faint); font-weight: 400; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; color: var(--ink-2); white-space: nowrap; }
+.sw { width: 30px; height: 18px; border-radius: 9px; background: #cbd5e1; position: relative; flex: none; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.sw.on { background: var(--brand-600); }
+.sw.on::after { left: 14px; }
+.sw.live.on { background: var(--live); }
+.chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.chips .lbl { font-size: 12px; color: var(--muted); margin-right: 2px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 6px 0 10px; border-radius: 13px;
+  background: var(--brand-50); color: var(--brand); font-weight: 600; font-size: 12px; white-space: nowrap;
+}
+.chip span { font-weight: 500; color: var(--brand-600); }
+.chip .x { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: rgba(15,61,99,.1); }
+.chip .x .i { width: 11px; height: 11px; }
+.clearall { font-size: 12px; font-weight: 600; color: var(--brand-600); margin-left: 4px; }
+
+/* --------------------------------------------------------------------------
+   Selection — checkbox, selected rows, bulk action bar
+   -------------------------------------------------------------------------- */
+.cb {
+  width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #b6c2d1; background: #fff; flex: none;
+  display: inline-grid; place-items: center;
+}
+.cb.on { background: var(--brand); border-color: var(--brand); }
+.cb.on::after { content: ""; width: 8px; height: 4px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg); }
+.cb.mixed { background: var(--brand); border-color: var(--brand); }
+.cb.mixed::after { content: ""; width: 8px; height: 2px; background: #fff; border-radius: 1px; }
+.bulkbar {
+  display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 10px 0 14px; border-radius: var(--r);
+  background: var(--ink); color: #fff;
+}
+.bulkbar b { font-weight: 600; }
+.bulkbar .btn { height: 30px; font-size: 12.5px; }
+.bulkbar .btn-dk { background: rgba(255,255,255,.08); color: #fff; border-color: rgba(255,255,255,.14); }
+.bulkbar .btn-dk.warn { color: #ffcf8a; }
+.bulkbar .btn-dk.danger { color: #ffb3ad; }
+.bulkbar .lnk { color: #9fc6ec; font-weight: 600; font-size: 12.5px; }
+
+/* --------------------------------------------------------------------------
+   Cards + tables
+   -------------------------------------------------------------------------- */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow); }
+.tbl { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+.tbl th {
+  text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted);
+  padding: 0 10px; height: 36px; background: #f8fafc; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.tbl th.n, .tbl td.n { text-align: right; }
+.tbl td { overflow: hidden; text-overflow: ellipsis; padding: 0 10px; height: 52px; border-bottom: 1px solid var(--line-2); vertical-align: middle; white-space: nowrap; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl tr.sel td { background: #f2f7fc; }
+.tbl tr.attn td:first-child { box-shadow: inset 3px 0 0 var(--risk); }
+.tbl tr.susp td { background: #fffbf5; }
+.tbl tr.dim td { color: var(--muted); }
+.tbl .sort { display: inline-flex; align-items: center; gap: 3px; color: var(--ink-2); }
+.teams b { display: block; font-weight: 600; font-size: 13px; }
+.teams span { color: var(--muted); font-size: 12px; }
+.time b { display: block; font-weight: 600; font-variant-numeric: tabular-nums; }
+.time span { font-size: 11.5px; color: var(--muted); }
+.time .soon { color: var(--susp); font-weight: 600; }
+.bar { width: 64px; height: 5px; border-radius: 3px; background: var(--line-2); overflow: hidden; display: inline-block; vertical-align: middle; }
+.bar i { display: block; height: 100%; background: var(--brand-600); border-radius: 3px; }
+.bar.hot i { background: var(--risk); }
+.bar.mid i { background: var(--warn); }
+
+/* KPI strip */
+.kpis { display: grid; gap: 12px; }
+.kpi { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.kpi .t { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.kpi b { font-size: 22px; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; }
+.kpi .s { font-size: 11.5px; color: var(--muted); }
+.kpi.alert { border-color: #f4c3bf; background: linear-gradient(0deg, #fff, #fff7f6); }
+.kpi.alert b { color: var(--risk); }
+
+/* --------------------------------------------------------------------------
+   Price stepper — explicit − / + with the step size, delta vs. published price
+   -------------------------------------------------------------------------- */
+.stepper {
+  display: inline-flex; align-items: stretch; height: 32px; border: 1px solid #cfd8e3; border-radius: var(--r); background: #fff; overflow: hidden;
+}
+.stepper button { width: 30px; display: grid; place-items: center; color: var(--ink-2); background: #f8fafc; }
+.stepper button:first-child { border-right: 1px solid var(--line); }
+.stepper button:last-child { border-left: 1px solid var(--line); }
+.stepper .v { width: 54px; display: grid; place-items: center; font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.stepper.dirty { border-color: var(--edit); box-shadow: 0 0 0 3px rgba(244, 180, 0, .18); }
+.stepper.dirty .v { background: var(--edit-bg); }
+.stepper.locked { background: #f8fafc; }
+.stepper.locked .v { color: var(--muted); }
+.stepper.locked button { color: #c4cedb; }
+.stepper.sm { height: 28px; }
+.stepper.sm button { width: 26px; }
+.stepper.sm .v { width: 46px; font-size: 13px; }
+.delta { display: inline-flex; align-items: center; gap: 2px; font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.delta.up { color: var(--up); }
+.delta.down { color: var(--down); }
+.delta .was { color: var(--muted); font-weight: 500; margin-left: 3px; }
+.delta .i { width: 11px; height: 11px; stroke-width: 2.6; }
+.stepnote { font-size: 11px; color: var(--muted); }
+
+/* Price cell (read state) */
+.px {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; height: 44px; border-radius: var(--r);
+  border: 1px solid var(--line); background: #fff; min-width: 70px;
+}
+.px small { font-size: 10.5px; color: var(--muted); font-weight: 500; }
+.px b { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 3px; }
+.px b .i { width: 11px; height: 11px; stroke-width: 2.8; }
+.px.up b .i { color: var(--up); }
+.px.down b .i { color: var(--down); }
+.px.dirty { border-color: var(--edit); background: var(--edit-bg); box-shadow: 0 0 0 3px rgba(244, 180, 0, .18); }
+.px.locked { background: #f8fafc; }
+.px.locked b { color: var(--faint); }
+
+/* Unsaved-changes bar */
+.savebar {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: var(--r-lg);
+  background: var(--ink); color: #fff; box-shadow: var(--shadow-lg);
+}
+.savebar .dotedit { width: 8px; height: 8px; border-radius: 50%; background: var(--edit); box-shadow: 0 0 0 4px rgba(244,180,0,.25); }
+.savebar .btn-dk { background: transparent; color: #cfe0f1; border-color: rgba(255,255,255,.2); }
+.savebar .btn-go { background: #fff; color: var(--ink); }
+.savebar small { color: #9fb3c8; font-size: 12px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--line); }
+.tabs a { height: 38px; display: inline-flex; align-items: center; gap: 7px; font-weight: 600; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs a.on { color: var(--brand); border-color: var(--brand); }
+.tabs a .c { font-size: 11px; background: var(--bg); color: var(--muted); border-radius: 9px; padding: 1px 7px; font-weight: 600; }
+.tabs a.on .c { background: var(--brand-50); color: var(--brand); }
+
+/* Team crest placeholder */
+.crest { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 9px; font-weight: 800; color: #fff; flex: none; letter-spacing: -.02em; }
+
+/* --------------------------------------------------------------------------
+   Mobile shell (375 × 812)
+   -------------------------------------------------------------------------- */
+.phone { width: 375px; height: 812px; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; position: relative; }
+.statusbar { height: 44px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 22px 0 28px; font-weight: 600; font-size: 14px; background: #fff; }
+.statusbar .sys { display: flex; gap: 5px; align-items: center; }
+.statusbar .sys i { display: block; background: var(--ink); border-radius: 1px; }
+.appbar { flex: none; display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 12px; background: #fff; border-bottom: 1px solid var(--line); }
+.appbar h2 { font-size: 16px; font-weight: 700; flex: 1; }
+.appbar h2 small { display: block; font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.mscroll { flex: 1; overflow: hidden; padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+.hscroll { display: flex; gap: 8px; overflow: hidden; margin: 0 -14px; padding: 0 14px; }
+.hscroll > * { flex: none; }
+.tabbar {
+  flex: none; height: 78px; background: #fff; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); padding: 8px 4px 26px;
+}
+.tabbar a { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 600; color: var(--faint); text-decoration: none; position: relative; }
+.tabbar a.on { color: var(--brand); }
+.tabbar .i { width: 22px; height: 22px; }
+.tabbar .badge { position: absolute; top: -4px; left: 50%; margin-left: 4px; }
+.homeind { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; height: 5px; border-radius: 3px; background: var(--ink); }
+.mcard { background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow); }
+.phone .segtabs button { height: 30px; }
+
+
+.act { gap: 4px; }
+.act .btn:first-child { min-width: 92px; justify-content: center; }
+.content > * { flex-shrink: 0; }
+
+</style>
+<style>
+  html, body { background: #e9edf2; overflow-x: hidden; }
+  .demobar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 16px;
+    background: var(--ink); color: #cfe0f1; font-size: 13px;
+  }
+  .demobar .lbl { font-weight: 700; color: #fff; margin-right: 6px; }
+  .demobar .lbl small { font-weight: 500; color: #8aa3bd; margin-left: 6px; }
+  .steps { display: flex; gap: 6px; flex-wrap: wrap; }
+  .steps button {
+    display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 6px; border-radius: 16px;
+    background: rgba(255,255,255,.07); color: #cfe0f1; font-weight: 600; font-size: 12.5px; border: 1px solid rgba(255,255,255,.12);
+  }
+  .steps button .n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.12); font-size: 11px; }
+  .steps button.on { background: #fff; color: var(--ink); }
+  .steps button.on .n { background: var(--brand); color: #fff; }
+  .demobar .reset { margin-left: auto; color: #9fc6ec; font-weight: 600; font-size: 12.5px; }
+  .hint {
+    display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: var(--r-lg);
+    background: #eef5fd; border: 1px solid #cfe1f6; color: #1b4f7e; font-size: 12.5px;
+  }
+  .hint b { font-weight: 700; }
+  .hint .i { color: var(--brand-600); }
+  #viewport { overflow: hidden; }
+  #stage { width: 1366px; transform-origin: top left; }
+  .desk { height: auto; min-height: 900px; }
+  .desk .main { overflow: visible; }
+  .rail a, .navlist a, [data-act] { cursor: pointer; }
+  .tbl tbody tr { transition: background .15s; }
+  .tbl tbody tr:hover td { background: #f8fafc; }
+  .tbl tbody tr.sel:hover td { background: #eaf2fb; }
+  .btn:hover { filter: brightness(.97); }
+  .btn-primary:hover { background: var(--brand-600); filter: none; }
+  .stepper button:hover { background: #eef3f8; color: var(--ink); }
+  .stepper.locked button { cursor: not-allowed; }
+  .segtabs button:not(.on):hover { background: var(--bg); }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+  .toast {
+    position: fixed; left: 50%; bottom: 96px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+    display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-radius: var(--r-lg);
+    background: var(--ink); color: #fff; font-weight: 600; box-shadow: var(--shadow-lg); transition: all .25s; z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast .i { color: #7ee2a8; }
+  .pulse { animation: pulse 1.2s ease-out 1; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(47,127,209,.45); } 100% { box-shadow: 0 0 0 12px rgba(47,127,209,0); } }
+  /* event page */
+  .evhead { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+  .evtitle { display: flex; align-items: center; gap: 14px; }
+  .crests { display: flex; }
+  .crests .crest { width: 38px; height: 38px; font-size: 11px; border: 2px solid #fff; }
+  .crests .crest + .crest { margin-left: -8px; }
+  .evtitle h1 { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .evtitle p { color: var(--muted); margin-top: 2px; font-size: 12.5px; }
+  .evstats { display: flex; border-top: 1px solid var(--line-2); padding-top: 12px; }
+  .evstats > div { padding: 0 20px; border-left: 1px solid var(--line-2); }
+  .evstats > div:first-child { padding-left: 0; border: 0; }
+  .evstats small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; }
+  .evstats b { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .mkt { overflow: hidden; }
+  .mkt.flagged { border-color: #f1c6c2; }
+  .mkt.susp-card { background: #fffcf7; border-color: #f3dcb9; }
+  .mkthead { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 12px 0 14px; }
+  .mkthead h3 { font-size: 14px; font-weight: 700; }
+  .mkt.flagged .mkthead { background: linear-gradient(0deg, #fff, #fff8f7); }
+  .mkt .tbl th { height: 32px; background: #fafbfd; }
+  .mkt .tbl td { height: 54px; }
+  .alertline { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--risk-bg); color: var(--risk); font-size: 12px; font-weight: 500; border-top: 1px solid #f7d4d1; }
+  .alertline b { font-weight: 700; }
+  .mktfoot { display: flex; align-items: center; gap: 18px; padding: 9px 14px; border-top: 1px solid var(--line-2); font-size: 12px; color: var(--muted); background: #fafbfd; }
+  .mktfoot b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .selname b { display: block; font-weight: 600; }
+  .selname span { font-size: 11.5px; color: var(--muted); }
+  .liab { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .liab.hot { color: var(--risk); }
+  #savehost { --s: 1; }
+  .savewrap { position: fixed; left: 50%; bottom: calc(16px * var(--s)); width: min(1060px, calc(100vw / var(--s) - 24px)); transform: translateX(-50%) scale(var(--s)); transform-origin: bottom center; transition: opacity .2s; z-index: 40; }
+  .savewrap.hide { opacity: 0; pointer-events: none; }
+  .savebar { flex-wrap: wrap; }
+  /* customer page */
+  .cust { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+  .cust .top { display: flex; align-items: center; gap: 14px; }
+  .cust .avatar { width: 48px; height: 48px; font-size: 16px; background: linear-gradient(135deg, #3b82c4, #1b4f7e); }
+  .cust h1 { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .cust p { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .stats { display: flex; border-top: 1px solid var(--line-2); padding-top: 12px; }
+  .stats > div { padding: 0 22px; border-left: 1px solid var(--line-2); }
+  .stats > div:first-child { padding-left: 0; border: 0; }
+  .stats small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; }
+  .stats b { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .case { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 14px; border-radius: var(--r-lg); background: #fff; border: 1px solid #f0c98f; box-shadow: inset 3px 0 0 var(--susp), var(--shadow); }
+  .case.done { border-color: #d8cdf6; box-shadow: inset 3px 0 0 var(--res), var(--shadow); }
+  .case .ico { width: 30px; height: 30px; border-radius: 8px; background: var(--susp-bg); color: var(--susp); display: grid; place-items: center; }
+  .case.done .ico { background: var(--res-bg); color: var(--res); }
+  .case b { font-weight: 700; }
+  .split { display: grid; grid-template-columns: 1fr 408px; gap: 16px; }
+  .sel-cell b { display: block; font-weight: 600; }
+  .sel-cell span { font-size: 11.5px; color: var(--muted); }
+  .panel { display: flex; flex-direction: column; overflow: hidden; }
+  .panel .ph { padding: 14px 16px 12px; border-bottom: 1px solid var(--line-2); }
+  .panel .ph h3 { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .panel .ph p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .betsum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 16px; }
+  .betsum div { background: var(--bg); border-radius: var(--r); padding: 8px 10px; }
+  .betsum small { display: block; font-size: 11px; color: var(--muted); }
+  .betsum b { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tl { padding: 4px 16px 8px; }
+  .tl h4 { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 6px 0 8px; }
+  .ev { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; position: relative; padding-bottom: 12px; }
+  .ev::before { content: ""; position: absolute; left: 12px; top: 26px; bottom: 0; width: 2px; background: var(--line-2); }
+  .ev:last-child::before { display: none; }
+  .ev .dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); color: var(--ink-2); }
+  .ev .dot .i { width: 13px; height: 13px; }
+  .ev b { font-weight: 600; font-size: 12.5px; display: block; }
+  .ev span { font-size: 12px; color: var(--muted); }
+  .ev time { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ev.hl .dot { background: var(--edit-bg); color: #9a6b00; }
+  .ev.pay .dot { background: var(--live-bg); color: var(--live); }
+  .ev.bet .dot { background: var(--pre-bg); color: var(--pre); }
+  .ev.res .dot { background: var(--res-bg); color: var(--res); }
+  .resolve { margin-top: auto; padding: 12px 16px 14px; border-top: 1px solid var(--line); background: #fafbfd; }
+  .resolve h4 { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+  .resolve .row .btn { flex: 1; justify-content: center; }
+</style>
+</head>
+<body>
+<div class="demobar">
+  <span class="lbl">Interactive demo<small>Concept · fictional data</small></span>
+  <div class="steps">
+    <button data-act="go" data-v="queue"><span class="n">1</span>Spot the risk</button>
+    <button data-act="go" data-v="event"><span class="n">2</span>Reprice the market</button>
+    <button data-act="go" data-v="customer"><span class="n">3</span>Resolve the dispute</button>
+  </div>
+  <button class="reset" data-act="reset">Reset demo</button>
+</div>
+<div id="viewport"><div id="stage"><div class="desk" id="desk" style="position:relative"><div data-shell></div></div></div></div>
+<div id="savehost"></div>
+<div class="toast" id="toast"><svg class="i"><use href="#i-check"/></svg><span></span></div>
+
+<script>
+// Inline SVG sprite (Lucide-style strokes). Use: <svg class="i"><use href="#i-name"/></svg>
+(function () {
+  const p = {
+    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+    dashboard: '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+    events: '<path d="M4 22V4a1 1 0 0 1 1-1h11l-2 4 2 4H5"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+    wallet: '<path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><path d="M17 14h.01"/>',
+    shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+    external: '<path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+    chart: '<path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    down: '<path d="m6 9 6 6 6-6"/>',
+    up: '<path d="m18 15-6-6-6 6"/>',
+    right: '<path d="m9 18 6-6-6-6"/>',
+    left: '<path d="m15 18-6-6 6-6"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>',
+    x: '<path d="M18 6 6 18M6 6l12 12"/>',
+    filter: '<path d="M3 5h18l-7 8v6l-4 2v-8z"/>',
+    more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+    pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+    play: '<path d="m6 4 14 8-14 8z"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    result: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 5-5"/>',
+    edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+    alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    refresh: '<path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/>',
+    eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+    sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+    lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
+    card: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+    note: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    ban: '<circle cx="12" cy="12" r="9"/><path d="m5.7 5.7 12.6 12.6"/>',
+    zap: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
+    tag: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><path d="M7.5 7.5h.01"/>',
+    copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
+    horse: '<path d="M4 20c1-4 3-6 6-7l-2-4 4 1 3-5 1 3 3 2-1 3-3-1-2 4v4"/><path d="M8 20h8"/>',
+    ball: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6c3.5 3.5 3.5 9.3 0 12.8M18.4 5.6c-3.5 3.5-3.5 9.3 0 12.8"/>',
+    feed: '<path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>',
+    history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/>',
+    home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+    arrowup: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+    arrowdown: '<path d="M12 5v14M19 12l-7 7-7-7"/>'
+  };
+  let s = '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">';
+  for (const k in p) s += '<symbol id="i-' + k + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + p[k] + '</symbol>';
+  s += '</svg>';
+  document.body.insertAdjacentHTML('afterbegin', s);
+})();
+
+</script>
+<script>
+(function () {
+  const ic = (n, c = '') => `<svg class="i ${c}"><use href="#i-${n}"/></svg>`;
+  const money = v => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'M' : v.toFixed(1) + 'k');
+  const fx = v => v.toFixed(2);
+  const ST = { pre: 'Pre-match', live: 'In-play', susp: 'Suspended', closed: 'Closed', res: 'Resulted' };
+  const pill = (s, label) => `<span class="st ${s}">${label || ST[s]}</span>`;
+
+  let S;
+  function initial() {
+    return {
+      view: 'queue', filter: 'all', selected: new Set(),
+      events: [
+        { id: 'col', st: 'live', t: 'Q3 · 14:22', ts: 'Started 7:30 pm', sp: 'AFL', lg: 'Round 24', name: 'Collingwood v Carlton', ven: 'MCG', open: 48, tot: 52, turn: 286.4, liab: 64.2, pct: 92, flag: ['3.2× limit · H2H', 'alert', ''] },
+        { id: 'ten', st: 'susp', t: 'Set 2 · 3–4', ts: 'Medical time-out', sp: 'Tennis', lg: 'ATP Tokyo', name: 'De Minaur v Fritz', ven: 'Ariake', open: 0, tot: 26, turn: 74.9, liab: 12.8, pct: 34, note: 'Paused 4m 12s' },
+        { id: 'vic', st: 'live', t: '61′', ts: 'Started 7:00 pm', sp: 'Soccer', lg: 'A-League Men', name: 'Victory v Sydney FC', ven: 'AAMI Park', open: 112, tot: 120, turn: 96.1, liab: 18.9, pct: 41 },
+        { id: 'sto', st: 'pre', t: 'in 6 min', soon: 1, ts: '7:50 pm', sp: 'NRL', lg: 'Prelim. Final', name: 'Storm v Panthers', ven: 'AAMI Park', open: 64, tot: 64, turn: 412.7, liab: 41.0, pct: 81, flag: ['Sharp money · Line −4.5', 'alert', ''] },
+        { id: 'kin', st: 'pre', t: 'in 14 min', soon: 1, ts: '7:58 pm', sp: 'Basketball', lg: 'NBL · Round 2', name: 'Kings v Wildcats', ven: 'Qudos Arena', open: 38, tot: 38, turn: 51.3, liab: 11.4, pct: 28, flag: ['Feed gap · BettingEdge', 'feed', 'warn'] },
+        { id: 'nsw', st: 'pre', t: 'in 26 min', ts: '8:10 pm', sp: 'Cricket', lg: 'Sheffield Shield', name: 'NSW v Victoria', ven: 'SCG', open: 22, tot: 22, turn: 23.6, liab: 10.2, pct: 22 },
+        { id: 'bri', st: 'pre', t: 'in 41 min', ts: '8:25 pm', sp: 'AFL', lg: 'Round 24', name: 'Brisbane v Geelong', ven: 'The Gabba', open: 52, tot: 52, turn: 198.0, liab: 29.7, pct: 63 },
+        { id: 'kas', st: 'closed', t: 'Full time', ts: 'Awaiting result', sp: 'Soccer', lg: 'J1 League', name: 'Kashima v Urawa', ven: 'Kashima', open: 0, tot: 96, turn: 31.5, liab: 10.6, pct: 30, note: 'Settles on result' }
+      ],
+      mk: {
+        line: { st: 'pre', follow: false, sels: [
+          { n: 'Storm −4.5', s: 'Melbourne Storm', pub: 1.90, cur: 1.90, bg: 1.86, be: 1.87, bets: 1204, liab: 41.0, hot: 1 },
+          { n: 'Panthers +4.5', s: 'Penrith Panthers', pub: 1.90, cur: 1.90, bg: 1.95, be: 1.94, bets: 402, liab: 6.1 } ] },
+        h2h: { st: 'pre', follow: true, sels: [
+          { n: 'Melbourne Storm', pub: 1.55, cur: 1.55, bg: 1.55, be: 1.56, bets: 811, liab: 18.2 },
+          { n: 'Penrith Panthers', pub: 2.45, cur: 2.45, bg: 2.45, be: 2.42, bets: 347, liab: 9.7 } ] },
+        total: { st: 'susp' }
+      },
+      published: 0, dispute: null
+    };
+  }
+
+  // ---------- shell ----------
+  const desk = document.getElementById('desk');
+  function shell() {
+    const sports = [['next', 'Next to play', '32', ''], ['afl', 'AFL', '9', '2'], ['nrl', 'NRL', '8', '1'], ['nba', 'Basketball', '41', '6'], ['cricket', 'Cricket', '12', '3'], ['soccer', 'Soccer', '186', '11'], ['tennis', 'Tennis', '74', '9'], ['rugby', 'Rugby Union', '14', ''], ['hockey', 'Ice Hockey', '22', '2'], ['golf', 'Golf', '6', ''], ['mma', 'Boxing & MMA', '18', ''], ['baseball', 'Baseball', '15', '1']];
+    const sport = S.view === 'event' ? 'nrl' : 'next';
+    const rail = S.view === 'customer' ? 'customers' : 'events';
+    const on = k => (k === rail ? ' class="on"' : '');
+    const noSub = S.view === 'customer';
+    return `
+      <header class="topbar">
+        <div class="brandmark"><span class="logo">B<em>E</em>T</span></div>
+        <div class="product">Operations console<small>Trading · Sports</small></div>
+        <div class="search">${ic('search')}<span>Search events, markets, customers or bet ID</span><span class="kbd">Ctrl K</span></div>
+        <div class="grow"></div>
+        <div class="feedstate"><span class="st live" style="height:20px">Feeds live</span><span class="muted">BetGenius · BettingEdge</span></div>
+        <button class="iconbtn">${ic('alert', 'i-lg')}<span class="badge">4</span></button>
+        <button class="iconbtn">${ic('bell', 'i-lg')}<span class="badge">12</span></button>
+        <div class="me"><div class="avatar">JS</div><div><b>John Stamos</b><span>Senior trader</span></div>${ic('down', 'i-sm')}</div>
+      </header>
+      <div class="body"${noSub ? ' style="grid-template-columns:76px 1fr"' : ''}>
+        <nav class="rail">
+          <a>${ic('dashboard')}Dashboard</a>
+          <a${on('events')} data-act="go" data-v="queue">${ic('events')}Events</a>
+          <a>${ic('shield')}Risk</a>
+          <a${on('customers')} data-act="go" data-v="customer">${ic('users')}Customers</a>
+          <a>${ic('wallet')}Payments</a><a>${ic('external')}Ext. markets</a><a>${ic('link')}Mappings</a><a>${ic('chart')}Reports</a>
+          <div class="spacer"></div><a>${ic('settings')}Settings</a>
+        </nav>
+        ${noSub ? '' : `<aside class="subnav">
+          <div class="seg-mini"><button>${ic('horse', 'i-sm')}Racing</button><button class="on">${ic('ball', 'i-sm')}Sports</button></div>
+          <h6>Sports</h6>
+          <div class="navlist">${sports.map(([k, n, c, l]) => `<a class="${k === sport ? 'on' : ''}" ${k === 'next' ? 'data-act="go" data-v="queue"' : k === 'nrl' ? 'data-act="go" data-v="event"' : ''}>${k === 'next' ? ic('clock', 'i-sm') : ''}${n}<span class="c">${l ? `<span class="livecount">${l}</span>&nbsp;·&nbsp;` : ''}${c}</span></a>`).join('')}</div>
+        </aside>`}
+        <div class="main"><div class="content" style="gap:14px${S.view === 'event' ? ';padding-bottom:100px' : ''}">${S.view === 'queue' ? queue() : S.view === 'event' ? eventPage() : customer()}</div></div>
+      </div>
+      `;
+  }
+
+  // ---------- 1. queue ----------
+  function queue() {
+    const ev = S.events;
+    const count = s => ev.filter(e => e.st === s).length;
+    const rows = ev.filter(e => S.filter === 'all' || e.st === S.filter);
+    const nSel = S.selected.size;
+    const tab = (k, label, dot) => `<button class="${S.filter === k ? 'on' : ''}" data-act="filter" data-v="${k}">${dot ? `<span class="dot" style="background:var(--${dot})${k === 'susp' ? ';border-radius:1px' : ''}"></span>` : ''}${label} <span class="c">${k === 'all' ? ev.length : count(k)}</span></button>`;
+    const allOn = rows.length && rows.every(e => S.selected.has(e.id));
+    const someOn = rows.some(e => S.selected.has(e.id));
+    return `
+      <div>
+        <div class="crumbs">Events ${ic('right')} Sports ${ic('right')} <b>Next to play</b></div>
+        <div class="pagehead" style="margin-top:6px">
+          <div><h1>Next to play</h1><p>Everything in-play plus events starting in the next 2 hours</p></div>
+          <div class="actions" style="align-items:center">
+            <span class="updated">${ic('refresh', 'i-sm')}Updated 2s ago</span>
+            <button class="btn btn-secondary">${ic('download')}Export</button>
+            <button class="btn btn-primary">${ic('plus')}New event</button>
+          </div>
+        </div>
+      </div>
+      <div class="hint">${ic('zap')}<span><b>Try it:</b> filter by status, tick rows to see bulk actions, press <b>Resume</b>, or open the flagged <b>Storm v Panthers</b> event.</span></div>
+      <div class="kpis" style="grid-template-columns:1.25fr 1fr 1fr 1fr 1.15fr">
+        <div class="card kpi alert"><span class="t">${ic('alert', 'i-sm')}Needs attention</span><b>${ev.filter(e => e.flag && e.flag[1] === 'alert').length + 2}</b><span class="s">2 over liability limit · 1 feed gap · 1 stale price</span></div>
+        <div class="card kpi"><span class="t">${pill('live')}</span><b>${count('live')}</b><span class="s">In this view</span></div>
+        <div class="card kpi"><span class="t">${ic('clock', 'i-sm')}Starting in 30 min</span><b>3</b><span class="s">1 without a trader assigned</span></div>
+        <div class="card kpi"><span class="t">${pill('susp')}</span><b>${count('susp')}</b><span class="s">Bets paused</span></div>
+        <div class="card kpi"><span class="t">${ic('shield', 'i-sm')}Open liability</span><b>$1.28M</b><span class="s"><span class="bar mid" style="width:90px"><i style="width:51%"></i></span>&nbsp; 51% of $2.5M daily limit</span></div>
+      </div>
+      <div class="filterbar">
+        <div class="segtabs">${tab('all', 'All')}${tab('pre', 'Pre-match', 'pre')}${tab('live', 'In-play', 'live')}${tab('susp', 'Suspended', 'susp')}${tab('closed', 'Closed', 'closed')}</div>
+        <span class="field"><small>Sport</small>All sports${ic('down', 'i-down')}</span>
+        <span class="field set"><small>Starts</small>Next 2 hours${ic('down', 'i-down')}</span>
+        <div class="grow"></div>
+        <span class="muted" style="font-size:12px">Showing <b style="color:var(--ink)">${rows.length}</b> of ${ev.length} events</span>
+      </div>
+      <div class="card" style="overflow:hidden">
+        ${nSel ? `<div style="padding:8px"><div class="bulkbar">
+          <span class="cb mixed" style="background:#fff;border-color:#fff"></span><b>${nSel} event${nSel > 1 ? 's' : ''} selected</b>
+          <span class="sep" style="background:rgba(255,255,255,.18)"></span>
+          <button class="btn btn-sm btn-dk warn" data-act="bulk" data-v="susp">${ic('pause', 'i-sm')}Suspend all markets</button>
+          <button class="btn btn-sm btn-dk" data-act="bulk" data-v="pre">${ic('play', 'i-sm')}Resume</button>
+          <button class="btn btn-sm btn-dk" data-act="bulk" data-v="closed">${ic('lock', 'i-sm')}Close betting</button>
+          <div class="grow"></div><button class="lnk" data-act="clearsel">Clear selection</button></div></div>` : ''}
+        <table class="tbl">
+          <thead><tr>
+            <th style="width:44px;padding-left:16px"><span class="cb ${allOn ? 'on' : someOn ? 'mixed' : ''}" data-act="selall"></span></th>
+            <th style="width:120px">Status</th><th style="width:116px">Starts</th><th style="width:116px">Sport · League</th><th>Event</th>
+            <th class="n" style="width:90px">Turnover</th><th style="width:196px">Liability</th><th style="width:136px;padding-left:4px">Action</th>
+          </tr></thead>
+          <tbody>${rows.length ? rows.map(row).join('') : `<tr><td colspan="8" class="empty">No events with this status. <a data-act="filter" data-v="all" style="color:var(--brand-600);font-weight:600">Show all</a></td></tr>`}</tbody>
+        </table>
+      </div>`;
+  }
+  function row(e) {
+    const sel = S.selected.has(e.id);
+    const cls = [e.flag && e.flag[1] === 'alert' && e.st !== 'susp' && e.st !== 'closed' ? 'attn' : '', sel ? 'sel' : '', e.st === 'susp' ? 'susp' : '', e.st === 'closed' ? 'dim' : ''].join(' ');
+    const open = e.st === 'susp' || e.st === 'closed' ? 0 : e.open;
+    const action = e.st === 'susp' ? `<button class="btn btn-sm btn-live" data-act="setst" data-id="${e.id}" data-v="${e.prev || 'live'}">${ic('play', 'i-sm')}Resume</button>`
+      : e.st === 'closed' ? `<button class="btn btn-sm btn-primary" data-act="toast" data-v="Result screen isn’t part of this demo">${ic('result', 'i-sm')}Result</button>`
+      : `<button class="btn btn-sm btn-secondary ${e.id === 'sto' ? 'pulse' : ''}" data-act="${e.id === 'sto' ? 'go' : 'toast'}" data-v="${e.id === 'sto' ? 'event' : 'Open Storm v Panthers to see the event page'}">Open</button>`;
+    const sub = e.st === 'susp' && !e.note ? 'Suspended just now' : e.note;
+    const flag = e.flag && e.st !== 'closed' && e.st !== 'susp' ? `<span class="flag ${e.flag[2]}">${ic(e.flag[1])}${e.flag[0]}</span>` : `<span class="muted" style="font-size:11.5px">${sub || 'Within limit'}</span>`;
+    return `<tr class="${cls}">
+      <td style="padding-left:16px"><span class="cb ${sel ? 'on' : ''}" data-act="sel" data-id="${e.id}"></span></td>
+      <td>${pill(e.st)}</td>
+      <td class="time"><b class="${e.soon && e.st === 'pre' ? 'soon' : ''}">${e.t}</b><span>${e.ts}</span></td>
+      <td class="teams"><b>${e.sp}</b><span>${e.lg}</span></td>
+      <td class="teams"><b>${e.name}</b><span>${e.ven} · ${open}/${e.tot} markets open</span></td>
+      <td class="n num"><b>$${e.turn.toFixed(1)}k</b></td>
+      <td><div class="row"><span class="bar ${e.pct > 75 ? 'hot' : e.pct > 55 ? 'mid' : ''}"><i style="width:${e.pct}%"></i></span><b class="num">${money(e.liab)}</b></div>${flag}</td>
+      <td style="padding-left:4px"><div class="row act">${action}<button class="btn btn-sm btn-ghost btn-icon">${ic('more')}</button></div></td>
+    </tr>`;
+  }
+
+  // ---------- 2. event ----------
+  const dirty = () => ['line', 'h2h'].flatMap(k => S.mk[k].sels.filter(s => Math.abs(s.cur - s.pub) > 1e-9).map(s => ({ k, s })));
+  function stepper(k, i, s, locked) {
+    const d = Math.abs(s.cur - s.pub) > 1e-9;
+    return `<div class="stepper ${locked ? 'locked' : d ? 'dirty' : ''}">
+      <button data-act="step" data-k="${k}" data-i="${i}" data-v="-1" ${locked ? 'disabled' : ''} title="−0.01 (Shift: −0.05)">${ic('minus', 'i-sm')}</button>
+      <span class="v">${fx(s.cur)}</span>
+      <button data-act="step" data-k="${k}" data-i="${i}" data-v="1" ${locked ? 'disabled' : ''} title="+0.01 (Shift: +0.05)">${ic('plus', 'i-sm')}</button></div>`;
+  }
+  function change(s, fallback) {
+    const d = +(s.cur - s.pub).toFixed(2);
+    if (!d) return fallback || `<span class="muted" style="font-size:11.5px">No change</span>`;
+    return `<span class="delta ${d < 0 ? 'down' : 'up'}">${ic(d < 0 ? 'arrowdown' : 'arrowup')}${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(2)}<span class="was">was ${fx(s.pub)}</span></span>`;
+  }
+  function mktActions(k, m) {
+    return m.st === 'susp'
+      ? `<button class="btn btn-sm btn-live" data-act="mst" data-k="${k}" data-v="pre">${ic('play', 'i-sm')}Resume</button>`
+      : `<button class="btn btn-sm btn-warn" data-act="mst" data-k="${k}" data-v="susp">${ic('pause', 'i-sm')}Suspend</button>`;
+  }
+  function selRows(k, m) {
+    const locked = m.follow || m.st === 'susp';
+    return m.sels.map((s, i) => `<tr>
+      <td class="selname" style="width:172px;padding-left:44px"><b>${s.n}</b>${s.s ? `<span>${s.s}</span>` : ''}</td>
+      <td style="width:104px">${pill(m.st, m.st === 'pre' ? 'Open' : 'Suspended')}</td>
+      <td style="width:150px">${stepper(k, i, s, locked)}</td>
+      <td style="width:136px">${change(s)}</td>
+      <td class="n num" style="width:96px;font-weight:600">${fx(s.bg)}</td>
+      <td class="n num" style="width:104px;font-weight:600">${fx(s.be)}</td>
+      <td class="n num" style="width:78px">${(100 / s.cur).toFixed(1)}%</td>
+      <td class="n num" style="width:70px">${s.bets.toLocaleString()}</td>
+      <td class="n"><span class="liab ${s.hot && s.cur >= 1.88 ? 'hot' : ''}">$${(s.liab * (s.hot ? (s.cur - 1) / 0.9 : 1)).toFixed(1)}k</span></td></tr>`).join('');
+  }
+  function book(m) { return m.sels.reduce((a, s) => a + 100 / s.cur, 0).toFixed(1); }
+  function eventPage() {
+    const L = S.mk.line, H = S.mk.h2h, T = S.mk.total;
+    const storm = L.sels[0];
+    const liab = storm.liab * (storm.cur - 1) / 0.9;
+    const safe = storm.pub < 1.88;
+    const openCount = 60 + (L.st === 'pre' ? 0 : -1) + (H.st === 'pre' ? 0 : -1) + (T.st === 'pre' ? 1 : 0);
+    return `
+      <div class="crumbs"><a data-act="go" data-v="queue">Events</a> ${ic('right')} Sports ${ic('right')} NRL ${ic('right')} Preliminary Final ${ic('right')} <b>Storm v Panthers</b></div>
+      <div class="card evhead">
+        <div class="evtitle">
+          <button class="btn btn-secondary btn-icon" data-act="go" data-v="queue">${ic('left')}</button>
+          <div class="crests"><span class="crest" style="background:#4b2a84">MEL</span><span class="crest" style="background:#23262b">PEN</span></div>
+          <div><h1>Storm v Panthers ${pill('pre')}<span class="tag solid" style="color:var(--susp);font-weight:600">${ic('clock')}Starts in 6 min</span></h1>
+            <p>Melbourne Storm v Penrith Panthers · NRL Preliminary Final · AAMI Park · 7:50 pm</p></div>
+          <div class="grow"></div>
+          <button class="btn btn-warn" data-act="evsusp">${ic('pause')}Suspend event</button>
+          <button class="btn btn-secondary">${ic('lock')}Close betting</button>
+        </div>
+        <div class="evstats">
+          <div><small>Turnover</small><b>$412.7k</b></div>
+          <div><small>Bets</small><b>2,764</b></div>
+          <div><small>Worst-case liability</small><b style="color:${liab > 39.5 ? 'var(--risk)' : 'var(--ink)'}">$${liab.toFixed(1)}k</b> <span class="bar ${liab > 39.5 ? 'hot' : 'mid'}" style="width:70px;margin-left:6px"><i style="width:${Math.min(100, liab * 2)}%"></i></span> <span class="muted" style="font-size:12px">${Math.round(liab * 2)}% of $50k limit</span></div>
+          <div><small>Markets</small><b>${openCount}</b> <span class="muted" style="font-size:12px">open of 64</span></div>
+          <div><small>Price source</small><b style="font-size:13px">BetGenius <span class="muted" style="font-weight:500">· ${(L.follow ? 0 : 1) + (H.follow ? 0 : 1)} manual</span></b></div>
+        </div>
+      </div>
+      <div class="hint">${ic('zap')}<span><b>Try it:</b> sharp money is hitting Storm −4.5. Use <b>−</b> to shorten the price and watch liability and the book update, then <b>Publish</b>. Toggle <b>Follow feed</b> to lock or unlock a market.</span></div>
+      <div class="tabs"><a class="on">Markets <span class="c">64</span></a><a>Bet ledger <span class="c">2,764</span></a><a>Event details</a><a>Activity log</a></div>
+      <div class="card mkt ${L.st === 'susp' ? 'susp-card' : safe ? '' : 'flagged'}">
+        <div class="mkthead">
+          <span class="cb"></span>${ic('down')}<h3>Line</h3>${pill(L.st, L.st === 'pre' ? 'Open' : 'Suspended')}
+          <span class="tag">${ic('tag')}Popular</span><span class="tag">${ic('tag')}SGM eligible</span>
+          <div class="grow"></div>
+          <span class="toggle" style="font-size:12px" data-act="follow" data-k="line"><span class="sw ${L.follow ? 'on' : ''}"></span>Follow feed</span>
+          ${L.follow ? `<span class="tag solid">${ic('feed')}BetGenius</span>` : `<span class="tag solid" style="color:#8a6100;background:var(--edit-bg)">${ic('edit')}Manual price</span>`}
+          <span class="sep"></span>${mktActions('line', L)}
+          <button class="btn btn-sm btn-ghost btn-icon">${ic('more')}</button>
+        </div>
+        ${safe ? `<div class="alertline" style="background:var(--live-bg);color:var(--live);border-top-color:#c4ead4">${ic('check', 'i-sm')}<b>Exposure back under control</b> Storm −4.5 is at ${fx(storm.pub)}, in line with the feed.</div>`
+          : `<div class="alertline">${ic('alert', 'i-sm')}<b>Sharp money</b> 68% of line stake in the last 10 min is on Storm −4.5 from 3 accounts flagged as professional.</div>`}
+        <table class="tbl"><thead><tr>
+          <th style="width:172px;padding-left:44px">Selection</th><th style="width:104px">Status</th><th style="width:150px">Our price</th><th style="width:136px">Change</th>
+          <th class="n" style="width:96px">BetGenius</th><th class="n" style="width:104px">BettingEdge</th><th class="n" style="width:78px">Implied</th><th class="n" style="width:70px">Bets</th><th class="n">Liability</th>
+        </tr></thead><tbody>${selRows('line', L)}</tbody></table>
+        <div class="mktfoot"><span>Book <b>${book(L)}%</b></span><span>Margin <b>${(book(L) - 100).toFixed(1)}%</b></span><span>Feed book <b>104.6%</b></span><span class="grow"></span><span><span class="kbd">−</span> <span class="kbd">+</span> step 0.01 · <span class="kbd">Shift</span> + click for 0.05</span></div>
+      </div>
+      <div class="card mkt ${H.st === 'susp' ? 'susp-card' : ''}">
+        <div class="mkthead">
+          <span class="cb"></span>${ic('down')}<h3>Head to head</h3>${pill(H.st, H.st === 'pre' ? 'Open' : 'Suspended')}<span class="tag">${ic('tag')}Popular</span>
+          <div class="grow"></div>
+          <span class="toggle" style="font-size:12px" data-act="follow" data-k="h2h"><span class="sw ${H.follow ? 'on' : ''}"></span>Follow feed</span>
+          ${H.follow ? `<span class="tag solid">${ic('feed')}BetGenius · synced 3s ago</span>` : `<span class="tag solid" style="color:#8a6100;background:var(--edit-bg)">${ic('edit')}Manual price</span>`}
+          <span class="sep"></span>${mktActions('h2h', H)}
+          <button class="btn btn-sm btn-ghost btn-icon">${ic('more')}</button>
+        </div>
+        <table class="tbl"><tbody>${selRows('h2h', H)}</tbody></table>
+      </div>
+      <div class="card mkt ${T.st === 'susp' ? 'susp-card' : ''}">
+        <div class="mkthead">
+          <span class="cb"></span>${ic('right')}<h3>Total points · Over/Under 38.5</h3>${pill(T.st, T.st === 'pre' ? 'Open' : 'Suspended')}
+          <span class="muted" style="font-size:12px">${T.st === 'susp' ? 'by J. Stamos 2 min ago · Feed gap on BettingEdge' : 'Resumed just now · following BetGenius'}</span>
+          <div class="grow"></div>${mktActions('total', T)}<button class="btn btn-sm btn-ghost btn-icon">${ic('more')}</button>
+        </div>
+      </div>`;
+  }
+  function saveBar() {
+    const d = dirty();
+    const list = d.map(({ s }) => `${s.n} ${fx(s.pub)} → ${fx(s.cur)}`).join(' · ');
+    return `<div class="savewrap ${d.length ? '' : 'hide'}"><div class="savebar">
+      <span class="dotedit"></span>
+      <div><b>${d.length} unsaved price change${d.length === 1 ? '' : 's'}</b> <small>&nbsp;${list}</small></div>
+      <div class="grow"></div><small>Goes live on publish</small>
+      <button class="btn btn-sm btn-dk" data-act="discard">Discard</button>
+      <button class="btn btn-sm btn-go" data-act="publish">${ic('check', 'i-sm')}Publish ${d.length} change${d.length === 1 ? '' : 's'}</button>
+    </div></div>`;
+  }
+
+  // ---------- 3. customer ----------
+  function customer() {
+    const D = S.dispute;
+    const bets = [
+      ['7:44 pm', 'Today', 'Storm −4.5 · Line', 'NRL · Storm v Panthers', 'Single', 200, '1.85', '$370.00', D === 'void' ? 'void' : 'pend', 1],
+      ['7:41 pm', 'Today', '3 legs · Storm, Munster 1st try, Over 38.5', 'NRL · Storm v Panthers', 'SGM', 20, '11.40', '$228.00', 'pend'],
+      ['7:02 pm', 'Today', 'Collingwood · Head to head', 'AFL · Collingwood v Carlton', 'Single', 50, '1.62', '$81.00', 'pend'],
+      ['4:12 pm', 'Sun 21 Sep', 'Sydney Swans −19.5 · Line', 'AFL · Sydney v GWS', 'Single', 100, '1.90', '$190.00', 'won'],
+      ['1:30 pm', 'Sun 21 Sep', '4 legs · AFL round multi', 'AFL · Round 23', 'Multi', 10, '14.20', '$0.00', 'lost'],
+      ['2:05 pm', 'Sat 20 Sep', 'De Minaur · Head to head', 'Tennis · De Minaur v Rune', 'Single', 50, '1.72', '$50.00', 'void'],
+      ['7:15 pm', 'Thu 18 Sep', 'Hawthorn · Head to head', 'AFL · Hawthorn v West Coast', 'Single', 80, '2.10', '$168.00', 'won']
+    ];
+    const BS = { pend: 'Pending', won: 'Won', lost: 'Lost', void: 'Void' };
+    const price = D === 'honour' ? '1.90' : '1.85';
+    const ret = D === 'honour' ? '$380.00' : D === 'void' ? '$200.00' : '$370.00';
+    const outcome = { keep: 'Kept at 1.85 · reply sent to customer', honour: 'Honoured at 1.90 · return updated to $380.00', void: 'Voided · $200.00 refunded to balance' }[D];
+    return `
+      <div class="crumbs">Customers ${ic('right')} <b>Jordan Nguyen</b></div>
+      <div class="card cust">
+        <div class="top"><div class="avatar">JN</div>
+          <div><h1>Jordan Nguyen ${pill('live', 'Active')}<span class="tag">${ic('check')}ID verified</span><span class="tag">${ic('tag')}VIP Silver</span></h1>
+          <p>Customer C-204815 · Member since Mar 2021 · Melbourne VIC · Last active 4 min ago on iOS app</p></div>
+          <div class="grow"></div>
+          <button class="btn btn-secondary">${ic('note')}Add note</button><button class="btn btn-secondary">${ic('sliders')}Limits</button><button class="btn btn-danger">${ic('ban')}Restrict account</button>
+        </div>
+        <div class="stats">
+          <div><small>Balance</small><b>${D === 'void' ? '$1,440.50' : '$1,240.50'}</b></div><div><small>Withdrawable</small><b>$980.00</b></div>
+          <div><small>Open bets</small><b>${D === 'void' ? 2 : 3}</b></div><div><small>Turnover · 90 days</small><b>$18.6k</b></div>
+          <div><small>Customer P/L · 90 days</small><b style="color:var(--risk)">−$1,108</b></div><div><small>Deposit limit</small><b>$1,000</b> <span class="muted" style="font-size:12px">/ week</span></div>
+        </div>
+      </div>
+      <div class="case ${D ? 'done' : ''}">
+        <span class="ico">${ic(D ? 'result' : 'alert')}</span>
+        <div><b>Dispute D-3318</b> ${D ? pill('res', 'Resolved') : pill('susp', 'Open')} <span style="margin-left:6px;color:var(--ink-2)">“I bet Storm −4.5 at 1.90 but my ticket says 1.85.”</span> <span class="muted">· ${D ? outcome : 'opened via live chat 12 min ago · assigned to you'}</span></div>
+        <div class="grow"></div>${D ? `<button class="btn btn-sm btn-secondary" data-act="undo">Undo</button>` : `<button class="btn btn-sm btn-secondary">View chat</button>`}
+      </div>
+      <div class="tabs"><a class="on">Bets <span class="c">186</span></a><a>Payments <span class="c">42</span></a><a>Account activity</a><a>Notes <span class="c">3</span></a></div>
+      <div class="split">
+        <div class="card" style="overflow:hidden;align-self:start">
+          <table class="tbl"><thead><tr><th style="width:96px;padding-left:16px">Placed</th><th>Selection</th><th style="width:80px">Type</th><th class="n" style="width:80px">Stake</th><th class="n" style="width:66px">Price</th><th class="n" style="width:88px">Return</th><th style="width:100px">Status</th></tr></thead>
+          <tbody>${bets.map(b => `<tr class="${b[9] ? 'sel' : ''}">
+            <td class="time" style="padding-left:16px;${b[9] ? 'box-shadow:inset 3px 0 0 var(--brand)' : ''}"><b>${b[0]}</b><span>${b[1]}</span></td>
+            <td class="sel-cell"><b>${b[2]}</b><span>${b[3]}</span></td><td><span class="tag">${b[4]}</span></td>
+            <td class="n num">$${b[5].toFixed(2)}</td><td class="n num"><b>${b[9] ? price : b[6]}</b></td>
+            <td class="n num" style="${b[8] === 'won' ? 'color:var(--live);font-weight:600' : b[8] === 'lost' ? 'color:var(--faint)' : ''}">${b[9] ? ret : b[7]}</td>
+            <td>${pill(b[8], BS[b[8]])}</td></tr>`).join('')}</tbody></table>
+        </div>
+        <div class="card panel">
+          <div class="ph"><h3>Bet PB-4821309 ${pill(D === 'void' ? 'void' : 'pend', D === 'void' ? 'Void' : 'Pending')}</h3><p>Storm −4.5 · Line · NRL Preliminary Final · placed 7:44:10 pm on iOS</p></div>
+          <div class="betsum"><div><small>Stake</small><b>$200.00</b></div><div><small>Price</small><b>${price}</b></div><div><small>${D === 'void' ? 'Refunded' : 'Potential return'}</small><b>${ret}</b></div></div>
+          <div class="tl"><h4>Timeline · bets, prices &amp; payments</h4>
+            <div class="ev pay"><span class="dot">${ic('wallet')}</span><div><b>Deposit $200.00 · PayID</b><span>Cleared instantly</span></div><time>7:39:02</time></div>
+            <div class="ev bet"><span class="dot">${ic('eye')}</span><div><b>Viewed Storm −4.5 at 1.90</b><span>Added to bet slip</span></div><time>7:43:52</time></div>
+            <div class="ev hl"><span class="dot">${ic('edit')}</span><div><b>Price changed 1.90 → 1.85</b><span>Manual reprice by J. Stamos · sharp money</span></div><time>7:44:06</time></div>
+            <div class="ev bet"><span class="dot">${ic('check')}</span><div><b>Customer accepted new price 1.85</b><span>“Odds have changed” prompt shown in app</span></div><time>7:44:10</time></div>
+            ${D ? `<div class="ev res"><span class="dot">${ic('result')}</span><div><b>Dispute resolved</b><span>${outcome}</span></div><time>now</time></div>` : `<div class="ev"><span class="dot">${ic('note')}</span><div><b>Dispute D-3318 opened</b><span>Live chat · assigned to you</span></div><time>7:56:31</time></div>`}
+          </div>
+          <div class="resolve">${D ? `<h4 style="color:var(--res)">Resolved — the full story was on one screen</h4><div class="row"><button class="btn btn-sm btn-secondary" data-act="undo">Undo resolution</button><button class="btn btn-sm btn-primary" data-act="go" data-v="queue">Back to risk queue</button></div>`
+            : `<h4>Resolve dispute</h4><div class="row"><button class="btn btn-sm btn-secondary" data-act="resolve" data-v="honour">Honour 1.90</button><button class="btn btn-sm btn-danger" data-act="resolve" data-v="void">Void &amp; refund</button><button class="btn btn-sm btn-primary pulse" data-act="resolve" data-v="keep">${ic('check', 'i-sm')}Keep at 1.85</button></div>`}</div>
+        </div>
+      </div>`;
+  }
+
+  // ---------- render + events ----------
+  function render() {
+    desk.innerHTML = shell();
+    document.getElementById('savehost').innerHTML = S.view === 'event' ? saveBar() : '';
+    document.querySelectorAll('.steps button').forEach(b => b.classList.toggle('on', b.dataset.v === S.view));
+    fit();
+  }
+  let tt;
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.querySelector('span').textContent = msg;
+    t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+  document.addEventListener('click', ev => {
+    const el = ev.target.closest('[data-act]');
+    if (!el || el.disabled) return;
+    const { act, v, id, k, i } = el.dataset;
+    const E = S.events.find(e => e.id === id);
+    switch (act) {
+      case 'go': S.view = v; window.scrollTo({ top: 0 }); break;
+      case 'reset': S = initial(); toast('Demo reset'); break;
+      case 'filter': S.filter = v; break;
+      case 'sel': S.selected.has(id) ? S.selected.delete(id) : S.selected.add(id); break;
+      case 'selall': {
+        const rows = S.events.filter(e => S.filter === 'all' || e.st === S.filter);
+        const all = rows.every(e => S.selected.has(e.id));
+        rows.forEach(e => all ? S.selected.delete(e.id) : S.selected.add(e.id)); break;
+      }
+      case 'clearsel': S.selected.clear(); break;
+      case 'bulk': {
+        let n = 0;
+        S.events.forEach(e => { if (S.selected.has(e.id) && e.st !== 'closed') { if (v === 'susp' && e.st !== 'susp') e.prev = e.st; e.st = v === 'pre' ? (e.prev || 'pre') : v; if (v !== 'susp') e.note = v === 'closed' ? 'Betting closed' : ''; n++; } });
+        S.selected.clear();
+        toast(`${n} event${n === 1 ? '' : 's'} ${v === 'susp' ? 'suspended' : v === 'closed' ? 'closed for betting' : 'resumed'}`); break;
+      }
+      case 'setst': E.st = v; E.note = ''; toast(`${E.name} resumed`); break;
+      case 'toast': toast(v); break;
+      case 'step': {
+        const s = S.mk[k].sels[+i];
+        const step = (ev.shiftKey ? 0.05 : 0.01) * +v;
+        s.cur = Math.max(1.01, +(s.cur + step).toFixed(2)); break;
+      }
+      case 'follow': {
+        const m = S.mk[k]; m.follow = !m.follow;
+        if (m.follow) m.sels.forEach(s => { s.cur = s.pub = s.bg; });
+        toast(m.follow ? 'Now following BetGenius · prices locked' : 'Manual pricing on · use − / + to edit'); break;
+      }
+      case 'mst': S.mk[k].st = v; toast(v === 'susp' ? 'Market suspended · bets paused' : 'Market resumed'); break;
+      case 'evsusp': ['line', 'h2h', 'total'].forEach(x => S.mk[x].st = 'susp'); toast('All markets on this event suspended'); break;
+      case 'discard': ['line', 'h2h'].forEach(x => S.mk[x].sels.forEach(s => s.cur = s.pub)); toast('Changes discarded'); break;
+      case 'publish': {
+        const n = dirty().length;
+        ['line', 'h2h'].forEach(x => S.mk[x].sels.forEach(s => s.pub = s.cur));
+        const st = S.mk.line.sels[0];
+        const sto = S.events.find(e => e.id === 'sto');
+        if (st.pub < 1.88) { sto.flag = null; sto.pct = 62; sto.liab = +(st.liab * (st.pub - 1) / 0.9).toFixed(1); }
+        toast(`${n} price${n === 1 ? '' : 's'} published · live now`); break;
+      }
+      case 'resolve': S.dispute = v; toast('Dispute resolved · customer notified'); break;
+      case 'undo': S.dispute = null; break;
+      default: return;
+    }
+    render();
+  });
+
+  // Scale the 1366px-wide console to fit any container (iframe, column, phone)
+  const stage = document.getElementById('stage'), vp = document.getElementById('viewport');
+  function fit() {
+    const s = Math.min(1, document.documentElement.clientWidth / 1366);
+    stage.style.transform = `scale(${s})`;
+    document.getElementById('savehost').style.setProperty('--s', s);
+    vp.style.height = (stage.offsetHeight * s) + 'px';
+  }
+  window.addEventListener('resize', fit);
+
+  S = initial();
+  const start = new URLSearchParams(location.search).get('step');
+  if (['queue', 'event', 'customer'].includes(start)) S.view = start;
+  render();
+})();
+</script>
+</body>
+</html>
